@@ -457,10 +457,10 @@ function ParticipantFields({ participant, setField, disabled }) {
   const role = normalizeRole(participant.role);
   return (
     <div className="form-grid">
-      <label>역할<select value={participant.role} disabled={disabled} onChange={(event) => setField("role", event.target.value)}><option value="학생">학생</option><option value="선생님">선생님</option></select></label>
+      <label>역할<select value={role} disabled={disabled} onChange={(event) => setField("role", event.target.value)}><option value="학생">학생</option><option value="선생님">선생님</option></select></label>
       <label className="is-required">이름<input value={participant.name} disabled={disabled} onChange={(event) => setField("name", event.target.value)} required /></label>
       <label className="is-required">성별<select value={participant.gender} disabled={disabled} onChange={(event) => setField("gender", event.target.value)} required><option value="">선택</option><option value="남">남</option><option value="여">여</option></select></label>
-      <label className={role === "학생" ? "is-required" : ""}>나이<input type="number" min="1" max="99" value={participant.age} disabled={disabled} onChange={(event) => setField("age", event.target.value)} required={role === "학생"} /></label>
+      <label className={role === "학생" ? "is-required" : ""}>나이<input type="number" min="1" max="99" value={participant.age || ""} disabled={disabled} onChange={(event) => setField("age", event.target.value)} required={role === "학생"} /></label>
       <label>보호자<input value={participant.guardian} disabled={disabled} onChange={(event) => setField("guardian", event.target.value)} /></label>
       <label className={role === "선생님" ? "is-required" : ""}>본인연락처<input value={participant.selfPhone} disabled={disabled} onChange={(event) => setField("selfPhone", event.target.value)} required={role === "선생님"} /></label>
       <label className={role === "학생" ? "is-required" : ""}>보호자연락처<input value={participant.guardianPhone} disabled={disabled} onChange={(event) => setField("guardianPhone", event.target.value)} required={role === "학생"} /></label>

@@ -45,7 +45,7 @@ export function normalizeParticipant(raw = {}, teams = []) {
     role,
     name: String(raw.name || "").trim(),
     gender: normalizeGender(raw.gender),
-    age: Number(raw.age || 0),
+    age: normalizeAge(raw.age),
     guardian: String(raw.guardian || "").trim(),
     selfPhone: String(raw.selfPhone || raw.personalPhone || raw["본인연락처"] || raw["본인 연락처"] || (role === "선생님" ? legacyPhone : "")).trim(),
     guardianPhone: String(raw.guardianPhone || raw.parentPhone || raw["보호자연락처"] || raw["보호자 연락처"] || (role === "학생" ? legacyPhone : "")).trim(),
@@ -76,6 +76,12 @@ export function normalizeGender(value) {
   if (["m", "male", "남", "남자"].includes(text)) return "남";
   if (["f", "female", "여", "여자"].includes(text)) return "여";
   return String(value || "").trim();
+}
+
+export function normalizeAge(value) {
+  const text = String(value ?? "").trim();
+  if (!text || Number(text) <= 0) return "";
+  return Number(text);
 }
 
 export function normalizeList(value) {
