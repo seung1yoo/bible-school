@@ -318,6 +318,69 @@ textarea {
   max-width: 320px;
 }
 
+.filter-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.filter-panel-header,
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-panel-header {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.filter-panel-header strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.filter-row {
+  align-items: flex-start;
+}
+
+.filter-row > span {
+  flex: 0 0 58px;
+  padding-top: 4px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.filter-chip.is-active {
+  border-color: #b8d0ff;
+  background: #e0ecff;
+  color: var(--blue-dark);
+}
+
 .list-toolbar {
   display: flex;
   align-items: center;

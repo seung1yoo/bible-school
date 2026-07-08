@@ -506,8 +506,18 @@ function ParticipantFields({ participant, setField, disabled }) {
 
 function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEditingId, onUpdate, onDelete, selectedIds, setSelectedIds, onDeleteSelected }) {
   const [sort, setSort] = useState({ key: "name", direction: "asc" });
+  const [filters, setFilters] = useState({ role: [], gender: [], age: [], assignment: [] });
+  const filterOptions = useMemo(() => ({
+    role: uniqueSorted(state.participants.map((person) => normalizeRole(person.role))),
+    gender: uniqueSorted(state.participants.map((person) => person.gender).filter(Boolean)),
+    age: uniqueSorted(state.participants.map((person) => person.age).filter(Boolean)),
+    assignment: uniqueSorted(state.participants.flatMap((person) => assignmentNames(person, state).length ? assignmentNames(person, state) : ["미배정"])),
+  }), [state]);
+  const activeFilterCount = Object.values(filters).reduce((sum, values) => sum + values.length, 0);
+  const searchedRows = state.participants.filter((person) => searchableText(person, state).includes(search.toLowerCase()));
+  const filteredRows = searchedRows.filter((person) => matchesApplicantFilters(person, state, filters));
   const rows = sortRows(
-    state.participants.filter((person) => searchableText(person, state).includes(search.toLowerCase())),
+    filteredRows,
     sort,
     (person, key) => {
       const values = {
@@ -535,9 +545,32 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
     const visibleIds = rows.map((person) => person.id);
     setSelectedIds(checked ? Array.from(new Set([...selectedIds, ...visibleIds])) : selectedIds.filter((id) => !visibleIds.includes(id)));
   };
+  const toggleFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: toggleArrayValue(current[key], value) }));
+  };
   return (
     <section className="view is-active">
       <div className="section-heading"><div><h2>참석자 조회</h2><p>역할, 연락처, 조, 사역팀으로 검색합니다.</p></div><input className="search-input" placeholder="검색" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+      <div className="filter-panel">
+        <div className="filter-panel-header">
+          <strong>필터</strong>
+          <span>{rows.length} / {state.participants.length}명 표시</span>
+          <button className="ghost-btn small-btn" type="button" onClick={() => setFilters({ role: [], gender: [], age: [], assignment: [] })} disabled={!activeFilterCount}>초기화</button>
+        </div>
+        {[
+          ["role", "역할", filterOptions.role],
+          ["gender", "성별", filterOptions.gender],
+          ["age", "나이", filterOptions.age.map((age) => `${age}`)],
+          ["assignment", "소속", filterOptions.assignment],
+        ].map(([key, label, options]) => (
+          <div className="filter-row" key={key}>
+            <span>{label}</span>
+            <div className="filter-options">
+              {options.map((option) => <button className={`filter-chip ${filters[key].includes(option) ? "is-active" : ""}`} type="button" key={option} onClick={() => toggleFilter(key, option)}>{key === "age" ? `${option}살` : option}</button>)}
+            </div>
+          </div>
+        ))}
+      </div>
       {canAdmin && (
         <div className="list-toolbar">
           <span>선택 {selectedIds.length}명</span>
@@ -850,6 +883,29 @@ function compareValues(a, b, direction) {
   const numberB = Number(b);
   if (a !== "" && b !== "" && Number.isFinite(numberA) && Number.isFinite(numberB)) return (numberA - numberB) * modifier;
   return String(a || "").localeCompare(String(b || ""), "ko", { numeric: true, sensitivity: "base" }) * modifier;
+}
+
+function toggleArrayValue(values, value) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function uniqueSorted(values) {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ko", { numeric: true, sensitivity: "base" }));
+}
+
+function matchesApplicantFilters(person, state, filters) {
+  const assignments = assignmentNames(person, state);
+  const assignmentValues = assignments.length ? assignments : ["미배정"];
+  return (
+    matchesFilter(filters.role, normalizeRole(person.role))
+    && matchesFilter(filters.gender, person.gender)
+    && matchesFilter(filters.age, person.age)
+    && (!filters.assignment.length || filters.assignment.some((assignment) => assignmentValues.includes(assignment)))
+  );
+}
+
+function matchesFilter(selectedValues, value) {
+  return !selectedValues.length || selectedValues.includes(String(value || ""));
 }
 
 function groupStudentStats(students) {
