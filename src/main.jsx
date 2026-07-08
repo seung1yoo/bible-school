@@ -44,6 +44,7 @@ function App() {
   const [medicalSearch, setMedicalSearch] = useState("");
   const [teamName, setTeamName] = useState("");
   const [importStatus, setImportStatus] = useState("");
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState([]);
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authError, setAuthError] = useState("");
 
@@ -99,6 +100,10 @@ function App() {
       alert(`${participant.role} 필수 항목을 입력해주세요: ${missing.join(", ")}`);
       return;
     }
+    if (hasDuplicateParticipantName(state.participants, participant.name)) {
+      alert(`이미 등록된 이름입니다: ${participant.name}`);
+      return;
+    }
     await persist({ ...state, participants: [...state.participants, participant] });
     setForm(emptyParticipant);
   }
@@ -117,6 +122,10 @@ function App() {
       alert(`${normalized.role} 필수 항목을 입력해주세요: ${missing.join(", ")}`);
       return;
     }
+    if (hasDuplicateParticipantName(state.participants, normalized.name, normalized.id)) {
+      alert(`이미 등록된 이름입니다: ${normalized.name}`);
+      return;
+    }
     await persist({
       ...state,
       participants: state.participants.map((person) => (person.id === normalized.id ? normalized : person)),
@@ -129,6 +138,16 @@ function App() {
     const person = state.participants.find((item) => item.id === id);
     if (!person || !confirm(`${person.name} 참석자를 삭제할까요?`)) return;
     await persist({ ...state, participants: state.participants.filter((item) => item.id !== id) });
+    setSelectedParticipantIds((ids) => ids.filter((selectedId) => selectedId !== id));
+    setEditingId("");
+  }
+
+  async function deleteSelectedParticipants(ids) {
+    if (!canAdmin || !ids.length) return;
+    const selectedNames = state.participants.filter((person) => ids.includes(person.id)).map((person) => person.name);
+    if (!selectedNames.length || !confirm(`선택한 참석자 ${selectedNames.length}명을 삭제할까요?`)) return;
+    await persist({ ...state, participants: state.participants.filter((person) => !ids.includes(person.id)) });
+    setSelectedParticipantIds([]);
     setEditingId("");
   }
 
@@ -269,9 +288,21 @@ function App() {
       rows = excelRowsToObjects(await readXlsxFile(file));
     }
     const parsed = rows.map((row) => normalizeParticipant(rowToParticipant(row), state.teams)).filter((person) => person.name);
-    const participants = parsed.filter((person) => missingRequiredFields(person).length === 0);
+    const existingNames = new Set(state.participants.map((person) => normalizeNameKey(person.name)).filter(Boolean));
+    let duplicateCount = 0;
+    const participants = parsed.filter((person) => {
+      if (missingRequiredFields(person).length !== 0) return false;
+      const nameKey = normalizeNameKey(person.name);
+      if (existingNames.has(nameKey)) {
+        duplicateCount += 1;
+        return false;
+      }
+      existingNames.add(nameKey);
+      return true;
+    });
     await persist({ ...state, participants: [...state.participants, ...participants] });
-    setImportStatus(`${participants.length}명을 가져왔습니다.${parsed.length - participants.length ? ` 필수 항목 누락으로 ${parsed.length - participants.length}명은 건너뛰었습니다.` : ""}`);
+    const missingCount = parsed.length - participants.length - duplicateCount;
+    setImportStatus(`${participants.length}명을 가져왔습니다.${duplicateCount ? ` 중복 이름 ${duplicateCount}명은 건너뛰었습니다.` : ""}${missingCount ? ` 필수 항목 누락으로 ${missingCount}명은 건너뛰었습니다.` : ""}`);
   }
 
   function exportJson() {
@@ -378,6 +409,9 @@ function App() {
             setEditingId={setEditingId}
             onUpdate={updateParticipant}
             onDelete={deleteParticipant}
+            selectedIds={selectedParticipantIds}
+            setSelectedIds={setSelectedParticipantIds}
+            onDeleteSelected={deleteSelectedParticipants}
           />
         )}
         {activeView === "groups" && (
@@ -470,18 +504,34 @@ function ParticipantFields({ participant, setField, disabled }) {
   );
 }
 
-function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEditingId, onUpdate, onDelete }) {
+function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEditingId, onUpdate, onDelete, selectedIds, setSelectedIds, onDeleteSelected }) {
   const rows = state.participants.filter((person) => searchableText(person, state).includes(search.toLowerCase()));
   const editing = state.participants.find((person) => person.id === editingId);
+  const selectedVisibleIds = rows.map((person) => person.id).filter((id) => selectedIds.includes(id));
+  const allVisibleSelected = rows.length > 0 && selectedVisibleIds.length === rows.length;
+  const toggleSelected = (id, checked) => {
+    setSelectedIds(checked ? Array.from(new Set([...selectedIds, id])) : selectedIds.filter((selectedId) => selectedId !== id));
+  };
+  const toggleAllVisible = (checked) => {
+    const visibleIds = rows.map((person) => person.id);
+    setSelectedIds(checked ? Array.from(new Set([...selectedIds, ...visibleIds])) : selectedIds.filter((id) => !visibleIds.includes(id)));
+  };
   return (
     <section className="view is-active">
       <div className="section-heading"><div><h2>참석자 조회</h2><p>역할, 연락처, 조, 사역팀으로 검색합니다.</p></div><input className="search-input" placeholder="검색" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
+      {canAdmin && (
+        <div className="list-toolbar">
+          <span>선택 {selectedIds.length}명</span>
+          <button className="danger-btn" type="button" onClick={() => onDeleteSelected(selectedIds)} disabled={!selectedIds.length}>선택 삭제</button>
+        </div>
+      )}
       <div className="table-wrap">
         <table>
-          <thead><tr><th>역할</th><th>이름</th><th>성별</th><th>나이</th><th>보호자</th><th>본인연락처</th><th>보호자연락처</th><th>교우관계</th><th>소속</th><th>특이사항</th><th></th></tr></thead>
+          <thead><tr>{canAdmin && <th className="select-col"><input type="checkbox" checked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} aria-label="현재 목록 전체 선택" /></th>}<th>역할</th><th>이름</th><th>성별</th><th>나이</th><th>보호자</th><th>본인연락처</th><th>보호자연락처</th><th>교우관계</th><th>소속</th><th>특이사항</th><th></th></tr></thead>
           <tbody>
             {rows.map((person) => (
               <tr key={person.id}>
+                {canAdmin && <td className="select-col"><input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(event) => toggleSelected(person.id, event.target.checked)} aria-label={`${person.name} 선택`} /></td>}
                 <td><RolePill person={person} /></td><td><strong>{person.name}</strong></td><td>{person.gender}</td><td>{person.age || ""}</td><td>{person.guardian}</td><td>{person.selfPhone}</td><td>{person.guardianPhone}</td><td>{renderFriendTags(person.friends)}</td><td>{assignmentNames(person, state).map((name) => <span className="pill" key={name}>{name}</span>)}</td><td>{person.notes}</td>
                 <td>{canAdmin && <button className="ghost-btn" type="button" onClick={() => setEditingId(person.id)}>수정</button>}</td>
               </tr>
@@ -669,6 +719,15 @@ function primaryAssignment(person, state) {
 
 function contactPhone(person) {
   return isTeacher(person) ? person.selfPhone : person.guardianPhone || person.selfPhone;
+}
+
+function normalizeNameKey(name) {
+  return String(name || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function hasDuplicateParticipantName(participants, name, exceptId = "") {
+  const nameKey = normalizeNameKey(name);
+  return Boolean(nameKey) && participants.some((person) => person.id !== exceptId && normalizeNameKey(person.name) === nameKey);
 }
 
 function searchableText(person, state) {
