@@ -568,16 +568,27 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
         <aside className="unassigned panel">
           <h3>미배정 학생</h3>
           <DropList groupId="" canAdmin={canAdmin} onAssign={onAssign}>{state.participants.filter((person) => isStudent(person) && !person.groupId).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</DropList>
-          <h3 className="side-heading">선생님 목록</h3>
-          <div className="person-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
+          <details className="teacher-reference">
+            <summary>선생님 목록</summary>
+            <div className="person-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
+          </details>
         </aside>
         <div className="group-board">
           {state.groups.map((group) => {
             const students = state.participants.filter((person) => isStudent(person) && person.groupId === group.id);
             const teachers = state.participants.filter((person) => isTeacher(person) && person.groupIds.includes(group.id));
+            const availableTeachers = state.participants.filter((person) => isTeacher(person) && !person.groupIds.includes(group.id));
             return (
               <section className="group-card" key={group.id}>
                 <header><h3>{group.name}</h3><div className="group-stats">학생 {students.length}명 · 선생님 {teachers.length}명</div></header>
+                {canAdmin && (
+                  <label className="teacher-picker">선생님 추가
+                    <select disabled={!availableTeachers.length} onChange={(event) => { if (event.target.value) onAssign(event.target.value, group.id); event.target.value = ""; }}>
+                      <option value="">{availableTeachers.length ? "선택" : "추가할 선생님 없음"}</option>
+                      {availableTeachers.map((person) => <option value={person.id} key={person.id}>{person.name}{person.selfPhone ? ` · ${person.selfPhone}` : ""}</option>)}
+                    </select>
+                  </label>
+                )}
                 <DropList groupId={group.id} canAdmin={canAdmin} onAssign={onAssign}>
                   <h4>학생</h4>{students.map((person) => <PersonCard key={person.id} person={person} state={state} />)}
                   <h4>선생님</h4>{teachers.map((person) => <PersonCard key={person.id} person={person} state={state} removableGroupId={group.id} onRemoveTeacher={onRemoveTeacher} />)}

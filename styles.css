@@ -397,6 +397,23 @@ tbody tr:hover {
   margin-top: 22px;
 }
 
+.teacher-reference {
+  margin-top: 18px;
+}
+
+.teacher-reference summary {
+  cursor: pointer;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.teacher-reference .person-list {
+  margin-top: 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
 .person-card {
   display: grid;
   gap: 6px;
@@ -505,6 +522,14 @@ tbody tr:hover {
 
 .group-card h3 {
   margin: 0;
+}
+
+.teacher-picker {
+  margin-bottom: 10px;
+}
+
+.teacher-picker select {
+  min-height: 38px;
 }
 
 .group-members h4 {
