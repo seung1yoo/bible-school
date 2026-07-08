@@ -36,7 +36,7 @@ function App() {
   const [state, setState] = useState(createInitialState());
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState("register");
+  const [activeView, setActiveView] = useState("applicants");
   const [form, setForm] = useState(emptyParticipant);
   const [editingId, setEditingId] = useState("");
   const [search, setSearch] = useState("");
