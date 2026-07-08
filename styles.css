@@ -22,6 +22,7 @@ body {
   color: var(--ink);
   background: linear-gradient(180deg, #eef4ff 0, #f7f9fc 240px, #f7f9fc 100%);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
 }
 
 button,
@@ -61,18 +62,18 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: clamp(25px, 3.2vw, 38px);
   letter-spacing: 0;
 }
 
 h2 {
   margin-bottom: 5px;
-  font-size: 24px;
+  font-size: 22px;
 }
 
 h3 {
   margin-bottom: 16px;
-  font-size: 18px;
+  font-size: 17px;
 }
 
 main {
@@ -115,7 +116,7 @@ main {
 .summary-grid strong {
   display: block;
   margin-top: 8px;
-  font-size: 28px;
+  font-size: 25px;
 }
 
 .tabs {
@@ -438,7 +439,19 @@ tbody tr:hover {
 }
 
 .person-card strong {
-  font-size: 16px;
+  font-size: 15px;
+}
+
+.group-mover {
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.group-mover select {
+  min-height: 34px;
+  padding: 7px 9px;
+  font-size: 13px;
 }
 
 .card-action {
@@ -668,8 +681,12 @@ tbody tr:hover {
   background: #f8fafc;
 }
 
-.phone-row a {
+.phone-row strong {
   color: var(--blue-dark);
+}
+
+.phone-row a {
+  color: var(--ink);
   font-weight: 800;
   text-decoration: none;
   font-variant-numeric: tabular-nums;
@@ -714,6 +731,27 @@ dialog::backdrop {
 }
 
 @media (max-width: 900px) {
+  body {
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 19px;
+  }
+
+  h3 {
+    font-size: 16px;
+  }
+
+  .topbar {
+    gap: 14px;
+    padding-top: 20px;
+  }
+
   .topbar,
   .section-heading {
     align-items: stretch;
@@ -728,6 +766,54 @@ dialog::backdrop {
 
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-grid article {
+    min-height: 70px;
+    padding: 12px;
+  }
+
+  .summary-grid strong {
+    font-size: 22px;
+  }
+
+  .tab {
+    min-height: 36px;
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  form.panel,
+  .import-panel,
+  .unassigned {
+    padding: 14px;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .primary-btn,
+  .secondary-btn,
+  .ghost-btn,
+  .danger-btn {
+    min-height: 36px;
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  .person-list,
+  .group-members {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .person-card {
+    gap: 5px;
+    padding: 10px;
   }
 
   .top-actions,

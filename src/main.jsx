@@ -567,7 +567,7 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
       <div className="builder-layout">
         <aside className="unassigned panel">
           <h3>미배정 학생</h3>
-          <DropList groupId="" canAdmin={canAdmin} onAssign={onAssign}>{state.participants.filter((person) => isStudent(person) && !person.groupId).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</DropList>
+          <DropList groupId="" canAdmin={canAdmin} onAssign={onAssign}>{state.participants.filter((person) => isStudent(person) && !person.groupId).map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover />)}</DropList>
           <details className="teacher-reference">
             <summary>선생님 목록</summary>
             <div className="person-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
@@ -590,7 +590,7 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
                   </label>
                 )}
                 <DropList groupId={group.id} canAdmin={canAdmin} onAssign={onAssign}>
-                  <h4>학생</h4>{students.map((person) => <PersonCard key={person.id} person={person} state={state} />)}
+                  <h4>학생</h4>{students.map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover />)}
                   <h4>선생님</h4>{teachers.map((person) => <PersonCard key={person.id} person={person} state={state} removableGroupId={group.id} onRemoveTeacher={onRemoveTeacher} />)}
                 </DropList>
               </section>
@@ -606,12 +606,20 @@ function DropList({ groupId, canAdmin, onAssign, children }) {
   return <div className="person-list drop-target" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (canAdmin) onAssign(event.dataTransfer.getData("text/plain"), groupId); }}>{children}</div>;
 }
 
-function PersonCard({ person, state, removableGroupId, onRemoveTeacher }) {
+function PersonCard({ person, state, canAdmin, removableGroupId, onAssign, onRemoveTeacher, showGroupMover }) {
   return (
     <article className={`person-card ${isTeacher(person) ? "teacher-card" : ""}`} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}>
       <strong>{person.name}</strong>
       <div className="person-meta"><RolePill person={person} /><span className={`pill ${person.gender === "남" ? "gender-male" : "gender-female"}`}>{person.gender || "성별 미입력"}</span>{contactPhone(person) && <span className="pill phone-pill">{contactPhone(person)}</span>}</div>
       {isTeacher(person) && person.teamIds.map((teamId) => <span className="pill" key={teamId}>{teamName(teamId, state)}</span>)}
+      {showGroupMover && canAdmin && isStudent(person) && (
+        <label className="group-mover">조 이동
+          <select value={person.groupId || ""} onChange={(event) => onAssign(person.id, event.target.value)}>
+            <option value="">미배정</option>
+            {state.groups.map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}
+          </select>
+        </label>
+      )}
       {removableGroupId && <button className="ghost-btn small-btn card-action" type="button" onClick={() => onRemoveTeacher(person.id, removableGroupId)}>조에서 제외</button>}
     </article>
   );
