@@ -379,12 +379,12 @@ function App() {
         </section>
         <nav className="tabs">
           {[
-            ["register", "참석자 등록"],
             ["applicants", "참석자 조회"],
-            ["groups", "조 Builder"],
             ["organization", "조직도"],
+            ["groups", "조편성"],
             ["attendance", "출석부"],
             ["medical", "의무기록"],
+            ["register", "참석자 등록"],
           ].map(([id, label]) => <button key={id} className={`tab ${activeView === id ? "is-active" : ""}`} onClick={() => setActiveView(id)} type="button">{label}</button>)}
         </nav>
 
@@ -505,7 +505,26 @@ function ParticipantFields({ participant, setField, disabled }) {
 }
 
 function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEditingId, onUpdate, onDelete, selectedIds, setSelectedIds, onDeleteSelected }) {
-  const rows = state.participants.filter((person) => searchableText(person, state).includes(search.toLowerCase()));
+  const [sort, setSort] = useState({ key: "name", direction: "asc" });
+  const rows = sortRows(
+    state.participants.filter((person) => searchableText(person, state).includes(search.toLowerCase())),
+    sort,
+    (person, key) => {
+      const values = {
+        role: normalizeRole(person.role),
+        name: person.name,
+        gender: person.gender,
+        age: person.age,
+        guardian: person.guardian,
+        selfPhone: person.selfPhone,
+        guardianPhone: person.guardianPhone,
+        friends: person.friends,
+        assignment: assignmentNames(person, state).join(", "),
+        notes: person.notes,
+      };
+      return values[key] ?? "";
+    },
+  );
   const editing = state.participants.find((person) => person.id === editingId);
   const selectedVisibleIds = rows.map((person) => person.id).filter((id) => selectedIds.includes(id));
   const allVisibleSelected = rows.length > 0 && selectedVisibleIds.length === rows.length;
@@ -527,7 +546,18 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
       )}
       <div className="table-wrap">
         <table>
-          <thead><tr>{canAdmin && <th className="select-col"><input type="checkbox" checked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} aria-label="현재 목록 전체 선택" /></th>}<th>역할</th><th>이름</th><th>성별</th><th>나이</th><th>보호자</th><th>본인연락처</th><th>보호자연락처</th><th>교우관계</th><th>소속</th><th>특이사항</th><th></th></tr></thead>
+          <thead><tr>{canAdmin && <th className="select-col"><input type="checkbox" checked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} aria-label="현재 목록 전체 선택" /></th>}{[
+            ["role", "역할"],
+            ["name", "이름"],
+            ["gender", "성별"],
+            ["age", "나이"],
+            ["guardian", "보호자"],
+            ["selfPhone", "본인연락처"],
+            ["guardianPhone", "보호자연락처"],
+            ["friends", "교우관계"],
+            ["assignment", "소속"],
+            ["notes", "특이사항"],
+          ].map(([key, label]) => <SortableTh key={key} sortKey={key} label={label} sort={sort} setSort={setSort} />)}<th></th></tr></thead>
           <tbody>
             {rows.map((person) => (
               <tr key={person.id}>
@@ -561,26 +591,35 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
   return (
     <section className="view is-active">
       <div className="section-heading">
-        <div><h2>조 Builder</h2><p>학생은 한 조, 선생님은 여러 조에 배정할 수 있습니다.</p></div>
+        <div><h2>조편성</h2><p>학생은 한 조, 선생님은 여러 조에 배정할 수 있습니다.</p></div>
         <div className="group-controls"><label>조 개수<input type="number" min="1" max="20" defaultValue={state.groups.length} onBlur={(event) => onGroupCount(event.target.value)} disabled={!canAdmin} /></label><button className="primary-btn" type="button" onClick={onAutoBalance} disabled={!canAdmin}>자동 균형 배정</button></div>
       </div>
       <div className="builder-layout">
-        <aside className="unassigned panel">
-          <h3>미배정 학생</h3>
-          <DropList groupId="" canAdmin={canAdmin} onAssign={onAssign}>{state.participants.filter((person) => isStudent(person) && !person.groupId).map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover />)}</DropList>
-          <details className="teacher-reference">
-            <summary>선생님 목록</summary>
-            <div className="person-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
-          </details>
-        </aside>
+        <section className="unassigned panel">
+          <div className="compact-panel-heading">
+            <h3>미배정 학생</h3>
+            <span className="pill">{state.participants.filter((person) => isStudent(person) && !person.groupId).length}명</span>
+          </div>
+          <DropList className="unassigned-list" groupId="" canAdmin={canAdmin} onAssign={onAssign}>{state.participants.filter((person) => isStudent(person) && !person.groupId).map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover showFriends />)}</DropList>
+        </section>
+        <details className="teacher-reference panel">
+          <summary>선생님 목록</summary>
+          <div className="person-list teacher-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
+        </details>
         <div className="group-board">
           {state.groups.map((group) => {
             const students = state.participants.filter((person) => isStudent(person) && person.groupId === group.id);
             const teachers = state.participants.filter((person) => isTeacher(person) && person.groupIds.includes(group.id));
             const availableTeachers = state.participants.filter((person) => isTeacher(person) && !person.groupIds.includes(group.id));
+            const stats = groupStudentStats(students);
             return (
               <section className="group-card" key={group.id}>
                 <header><h3>{group.name}</h3><div className="group-stats">학생 {students.length}명 · 선생님 {teachers.length}명</div></header>
+                <div className="group-stat-pills">
+                  <span className="pill gender-male">남 {stats.male}</span>
+                  <span className="pill gender-female">여 {stats.female}</span>
+                  {stats.ages.map(([age, count]) => <span className="pill" key={age}>{age}살 {count}</span>)}
+                </div>
                 {canAdmin && (
                   <label className="teacher-picker">선생님 추가
                     <select disabled={!availableTeachers.length} onChange={(event) => { if (event.target.value) onAssign(event.target.value, group.id); event.target.value = ""; }}>
@@ -590,7 +629,7 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
                   </label>
                 )}
                 <DropList groupId={group.id} canAdmin={canAdmin} onAssign={onAssign}>
-                  <h4>학생</h4>{students.map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover />)}
+                  <h4>학생</h4>{students.map((person) => <PersonCard key={person.id} person={person} state={state} canAdmin={canAdmin} onAssign={onAssign} showGroupMover showFriends />)}
                   <h4>선생님</h4>{teachers.map((person) => <PersonCard key={person.id} person={person} state={state} removableGroupId={group.id} onRemoveTeacher={onRemoveTeacher} />)}
                 </DropList>
               </section>
@@ -602,15 +641,16 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
   );
 }
 
-function DropList({ groupId, canAdmin, onAssign, children }) {
-  return <div className="person-list drop-target" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (canAdmin) onAssign(event.dataTransfer.getData("text/plain"), groupId); }}>{children}</div>;
+function DropList({ className = "", groupId, canAdmin, onAssign, children }) {
+  return <div className={`person-list drop-target ${className}`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (canAdmin) onAssign(event.dataTransfer.getData("text/plain"), groupId); }}>{children}</div>;
 }
 
-function PersonCard({ person, state, canAdmin, removableGroupId, onAssign, onRemoveTeacher, showGroupMover }) {
+function PersonCard({ person, state, canAdmin, removableGroupId, onAssign, onRemoveTeacher, showGroupMover, showFriends }) {
   return (
     <article className={`person-card ${isTeacher(person) ? "teacher-card" : ""}`} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}>
       <strong>{person.name}</strong>
       <div className="person-meta"><RolePill person={person} /><span className={`pill ${person.gender === "남" ? "gender-male" : "gender-female"}`}>{person.gender || "성별 미입력"}</span>{contactPhone(person) && <span className="pill phone-pill">{contactPhone(person)}</span>}</div>
+      {showFriends && isStudent(person) && person.friends && <div className="friend-tags"><span className="mini-label">교우</span>{renderFriendTags(person.friends)}</div>}
       {isTeacher(person) && person.teamIds.map((teamId) => <span className="pill" key={teamId}>{teamName(teamId, state)}</span>)}
       {showGroupMover && canAdmin && isStudent(person) && (
         <label className="group-mover">조 이동
@@ -648,8 +688,52 @@ function OrgCard({ title, teachers, state, actions, removableTeamId, onRemove })
 }
 
 function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
-  const students = state.participants.filter(isStudent).sort((a, b) => primaryAssignment(a, state).localeCompare(primaryAssignment(b, state)));
-  return <section className="view is-active"><div className="section-heading"><div><h2>3일 출석부</h2><p>학생만 표시됩니다.</p></div><div className="day-settings">{state.dayLabels.map((label, index) => <input key={index} value={label} onChange={(event) => { const labels = [...state.dayLabels]; labels[index] = event.target.value; setDayLabels(labels); }} />)}</div></div><div className="table-wrap"><table><thead><tr><th>이름</th><th>조</th>{state.dayLabels.map((label) => <th key={label}>{label}</th>)}<th>메모</th></tr></thead><tbody>{students.map((person) => <tr key={person.id}><td><strong>{person.name}</strong></td><td>{primaryAssignment(person, state) || "미배정"}</td>{[1, 2, 3].map((day) => <td key={day}><input className="attendance-check" type="checkbox" disabled={!canAttendance} checked={Boolean(person.attendance?.[`day${day}`])} onChange={(event) => onChange(person.id, `day${day}`, event.target.checked)} /></td>)}<td><input disabled={!canAttendance} value={person.attendance?.memo || ""} onChange={(event) => onChange(person.id, "memo", event.target.value)} /></td></tr>)}</tbody></table></div></section>;
+  const [sort, setSort] = useState({ key: "assignment", direction: "asc" });
+  const students = sortRows(
+    state.participants.filter(isStudent),
+    sort,
+    (person, key) => {
+      const values = {
+        name: person.name,
+        assignment: primaryAssignment(person, state) || "미배정",
+        day1: Boolean(person.attendance?.day1),
+        day2: Boolean(person.attendance?.day2),
+        day3: Boolean(person.attendance?.day3),
+        memo: person.attendance?.memo || "",
+      };
+      return values[key] ?? "";
+    },
+  );
+  return (
+    <section className="view is-active">
+      <div className="section-heading">
+        <div><h2>3일 출석부</h2><p>학생만 표시됩니다.</p></div>
+        <div className="day-settings">{state.dayLabels.map((label, index) => <input key={index} value={label} onChange={(event) => { const labels = [...state.dayLabels]; labels[index] = event.target.value; setDayLabels(labels); }} />)}</div>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <SortableTh sortKey="name" label="이름" sort={sort} setSort={setSort} />
+              <SortableTh sortKey="assignment" label="조" sort={sort} setSort={setSort} />
+              {state.dayLabels.map((label, index) => <SortableTh key={label} sortKey={`day${index + 1}`} label={label} sort={sort} setSort={setSort} />)}
+              <SortableTh sortKey="memo" label="메모" sort={sort} setSort={setSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((person) => (
+              <tr key={person.id}>
+                <td><strong>{person.name}</strong></td>
+                <td>{primaryAssignment(person, state) || "미배정"}</td>
+                {[1, 2, 3].map((day) => <td key={day}><input className="attendance-check" type="checkbox" disabled={!canAttendance} checked={Boolean(person.attendance?.[`day${day}`])} onChange={(event) => onChange(person.id, `day${day}`, event.target.checked)} /></td>)}
+                <td><input disabled={!canAttendance} value={person.attendance?.memo || ""} onChange={(event) => onChange(person.id, "memo", event.target.value)} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
 }
 
 function MedicalView({ canMedical, state, search, setSearch, onChange }) {
@@ -659,6 +743,21 @@ function MedicalView({ canMedical, state, search, setSearch, onChange }) {
 
 function RolePill({ person }) {
   return <span className={`pill ${isTeacher(person) ? "role-teacher" : "role-student"}`}>{normalizeRole(person.role)}</span>;
+}
+
+function SortableTh({ sortKey, label, sort, setSort }) {
+  const active = sort.key === sortKey;
+  const directionMark = active ? (sort.direction === "asc" ? " ▲" : " ▼") : "";
+  return (
+    <th>
+      <button className={`sort-header ${active ? "is-active" : ""}`} type="button" onClick={() => setSort((current) => ({
+        key: sortKey,
+        direction: current.key === sortKey && current.direction === "asc" ? "desc" : "asc",
+      }))}>
+        {label}{directionMark}
+      </button>
+    </th>
+  );
 }
 
 function parseCsv(text) {
@@ -738,6 +837,31 @@ function primaryAssignment(person, state) {
 
 function contactPhone(person) {
   return isTeacher(person) ? person.selfPhone : person.guardianPhone || person.selfPhone;
+}
+
+function sortRows(rows, sort, valueFor) {
+  return [...rows].sort((a, b) => compareValues(valueFor(a, sort.key), valueFor(b, sort.key), sort.direction));
+}
+
+function compareValues(a, b, direction) {
+  const modifier = direction === "asc" ? 1 : -1;
+  if (typeof a === "boolean" || typeof b === "boolean") return (Number(a) - Number(b)) * modifier;
+  const numberA = Number(a);
+  const numberB = Number(b);
+  if (a !== "" && b !== "" && Number.isFinite(numberA) && Number.isFinite(numberB)) return (numberA - numberB) * modifier;
+  return String(a || "").localeCompare(String(b || ""), "ko", { numeric: true, sensitivity: "base" }) * modifier;
+}
+
+function groupStudentStats(students) {
+  const ageCounts = new Map();
+  students.forEach((student) => {
+    if (student.age) ageCounts.set(student.age, (ageCounts.get(student.age) || 0) + 1);
+  });
+  return {
+    male: students.filter((student) => student.gender === "남").length,
+    female: students.filter((student) => student.gender === "여").length,
+    ages: [...ageCounts.entries()].sort(([a], [b]) => Number(a) - Number(b)),
+  };
 }
 
 function normalizeNameKey(name) {

@@ -360,6 +360,23 @@ th {
   font-size: 13px;
 }
 
+.sort-header {
+  width: 100%;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sort-header.is-active {
+  color: var(--blue-dark);
+}
+
 tbody tr:hover {
   background: #f8fbff;
 }
@@ -377,8 +394,7 @@ tbody tr:hover {
 
 .builder-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
+  gap: 12px;
   align-items: start;
 }
 
@@ -398,8 +414,27 @@ tbody tr:hover {
   margin-top: 22px;
 }
 
+.compact-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.compact-panel-heading h3 {
+  margin-bottom: 0;
+}
+
+.unassigned-list {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  min-height: 92px;
+  max-height: 260px;
+  overflow: auto;
+}
+
 .teacher-reference {
-  margin-top: 18px;
+  padding: 12px 14px;
 }
 
 .teacher-reference summary {
@@ -413,6 +448,10 @@ tbody tr:hover {
   margin-top: 10px;
   max-height: 360px;
   overflow: auto;
+}
+
+.teacher-list {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .person-card {
@@ -478,6 +517,15 @@ tbody tr:hover {
   font-weight: 800;
 }
 
+.mini-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .pill.gender-male {
   background: #dbeafe;
   color: #1d4ed8;
@@ -514,12 +562,12 @@ tbody tr:hover {
 
 .group-board {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
 .group-card {
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);
@@ -535,6 +583,13 @@ tbody tr:hover {
 
 .group-card h3 {
   margin: 0;
+}
+
+.group-stat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: -2px 0 10px;
 }
 
 .teacher-picker {
