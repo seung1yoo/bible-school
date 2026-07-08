@@ -132,8 +132,6 @@ export function missingRequiredFields(person) {
     ["이름", person.name],
     ["성별", person.gender],
   ];
-  const roleSpecific = isTeacher(person)
-    ? [["본인연락처", person.selfPhone]]
-    : [["나이", person.age], ["보호자연락처", person.guardianPhone]];
+  const roleSpecific = isTeacher(person) ? [] : [["나이", person.age], ["보호자연락처", person.guardianPhone]];
   return [...common, ...roleSpecific].filter(([, value]) => !String(value || "").trim()).map(([label]) => label);
 }
