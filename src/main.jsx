@@ -30,6 +30,7 @@ const emptyParticipant = {
   guardianPhone: "",
   friends: "",
   notes: "",
+  isLeader: false,
 };
 
 function App() {
@@ -322,7 +323,7 @@ function App() {
   }
 
   function downloadTemplate() {
-    const csv = "\uFEFF역할,이름,성별,나이,보호자,본인연락처,보호자연락처,교우관계,특이사항\n학생,김하늘,남,10,김보호,,010-0000-0000,\"박은혜, 이사랑\",알레르기 확인\n선생님,이교사,여,,,010-1111-2222,,응급 연락 가능\n";
+    const csv = "\uFEFF역할,이름,성별,나이,보호자,본인연락처,보호자연락처,교우관계,특이사항,조장\n학생,김하늘,남,10,김보호,,010-0000-0000,\"박은혜, 이사랑\",알레르기 확인,예\n선생님,이교사,여,,,010-1111-2222,,응급 연락 가능,\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -478,7 +479,7 @@ function RegisterView({ canAdmin, form, setField, onSubmit, onTemplate, onImport
           <label className="drop-zone">
             <input type="file" accept=".csv,.xlsx,.xls" disabled={!canAdmin} onChange={(event) => onImport(event.target.files?.[0])} />
             <span>엑셀 또는 CSV 파일 선택</span>
-            <small>권장 열: 역할, 이름, 성별, 나이, 보호자, 본인연락처, 보호자연락처, 교우관계, 특이사항</small>
+            <small>권장 열: 역할, 이름, 성별, 나이, 보호자, 본인연락처, 보호자연락처, 교우관계, 특이사항, 조장</small>
           </label>
           <div className="status">{importStatus}</div>
         </div>
@@ -498,6 +499,7 @@ function ParticipantFields({ participant, setField, disabled }) {
       <label>보호자<input value={participant.guardian} disabled={disabled} onChange={(event) => setField("guardian", event.target.value)} /></label>
       <label>본인연락처<input value={participant.selfPhone} disabled={disabled} onChange={(event) => setField("selfPhone", event.target.value)} /></label>
       <label className={role === "학생" ? "is-required" : ""}>보호자연락처<input value={participant.guardianPhone} disabled={disabled} onChange={(event) => setField("guardianPhone", event.target.value)} required={role === "학생"} /></label>
+      {role === "학생" && <label className="checkbox-field"><input type="checkbox" checked={Boolean(participant.isLeader)} disabled={disabled} onChange={(event) => setField("isLeader", event.target.checked)} /> 조장</label>}
       <label className="wide">교우관계<input value={participant.friends} disabled={disabled} onChange={(event) => setField("friends", event.target.value)} /></label>
       <label className="wide">특이사항<textarea rows="3" value={participant.notes} disabled={disabled} onChange={(event) => setField("notes", event.target.value)} /></label>
     </div>
@@ -682,7 +684,7 @@ function PersonCard({ person, state, canAdmin, removableGroupId, onAssign, onRem
   return (
     <article className={`person-card ${isTeacher(person) ? "teacher-card" : ""}`} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", person.id)}>
       <strong>{person.name}</strong>
-      <div className="person-meta"><RolePill person={person} /><span className={`pill ${person.gender === "남" ? "gender-male" : "gender-female"}`}>{person.gender || "성별 미입력"}</span>{contactPhone(person) && <span className="pill phone-pill">{contactPhone(person)}</span>}</div>
+      <div className="person-meta"><RolePill person={person} />{person.isLeader && <span className="pill leader-pill">조장</span>}<span className={`pill ${person.gender === "남" ? "gender-male" : "gender-female"}`}>{person.gender || "성별 미입력"}</span>{contactPhone(person) && <span className="pill phone-pill">{contactPhone(person)}</span>}</div>
       {showFriends && isStudent(person) && person.friends && <div className="friend-tags"><span className="mini-label">교우</span>{renderFriendTags(person.friends)}</div>}
       {isTeacher(person) && person.teamIds.map((teamId) => <span className="pill" key={teamId}>{teamName(teamId, state)}</span>)}
       {showGroupMover && canAdmin && isStudent(person) && (
@@ -700,11 +702,13 @@ function PersonCard({ person, state, canAdmin, removableGroupId, onAssign, onRem
 
 function OrganizationView({ canAdmin, state, search, setSearch, teamName, setTeamName, onAddTeam, onDeleteTeam, onAssignTeacher, onRemoveTeacher }) {
   const teachers = state.participants.filter((person) => isTeacher(person) && searchableText(person, state).includes(search.toLowerCase()));
+  const leaders = state.participants.filter((person) => isStudent(person) && person.isLeader && searchableText(person, state).includes(search.toLowerCase()));
   return (
     <section className="view is-active">
-      <div className="section-heading"><div><h2>조직도</h2><p>사역팀과 조별 선생님 연락처를 확인합니다.</p></div><input className="search-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="선생님 검색" /></div>
+      <div className="section-heading"><div><h2>조직도</h2><p>조장, 사역팀, 조별 선생님 연락처를 확인합니다.</p></div><input className="search-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름 검색" /></div>
       {canAdmin && <form className="team-form panel" onSubmit={onAddTeam}><label>새 사역팀 이름<input value={teamName} onChange={(event) => setTeamName(event.target.value)} /></label><button className="primary-btn" type="submit">사역팀 추가</button></form>}
       <div className="organization-board">
+        <section className="organization-section"><h3>조별 조장</h3><div className="organization-grid">{state.groups.map((group) => <LeaderOrgCard key={group.id} title={group.name} leaders={leaders.filter((person) => person.groupId === group.id)} state={state} />)}</div></section>
         <section className="organization-section"><h3>조별 선생님</h3><div className="organization-grid">{state.groups.map((group) => <OrgCard key={group.id} title={group.name} teachers={teachers.filter((person) => person.groupIds.includes(group.id))} state={state} />)}</div></section>
         <section className="organization-section"><h3>팀별 선생님</h3><div className="organization-grid">{state.teams.map((team) => {
           const teamTeachers = teachers.filter((person) => person.teamIds.includes(team.id));
@@ -718,6 +722,10 @@ function OrganizationView({ canAdmin, state, search, setSearch, teamName, setTea
 
 function OrgCard({ title, teachers, state, actions, removableTeamId, onRemove }) {
   return <article className="org-card"><header><h3>{title}</h3><div className="org-actions"><span className="pill">선생님 {teachers.length}명</span>{actions}</div></header><div className="phone-list">{teachers.map((person) => <div className="phone-row" key={person.id}><strong>{person.name}</strong><a href={`tel:${person.selfPhone}`}>{person.selfPhone || "본인연락처 미입력"}</a><small>{assignmentNames(person, state).join(", ")}</small>{removableTeamId && <button className="ghost-btn small-btn" type="button" onClick={() => onRemove(person.id, removableTeamId)}>제거</button>}</div>)}</div></article>;
+}
+
+function LeaderOrgCard({ title, leaders, state }) {
+  return <article className="org-card"><header><h3>{title}</h3><div className="org-actions"><span className="pill leader-pill">조장 {leaders.length}명</span></div></header><div className="phone-list">{leaders.map((person) => <div className="phone-row" key={person.id}><strong>{person.name}</strong><a href={`tel:${contactPhone(person)}`}>{contactPhone(person) || "연락처 미입력"}</a><small>{assignmentNames(person, state).join(", ") || "미배정"}</small></div>)}</div></article>;
 }
 
 function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
@@ -839,6 +847,7 @@ function rowToParticipant(row) {
     guardianPhone: pick(row, ["보호자연락처", "보호자 연락처", "guardianPhone", "parentPhone"]),
     friends: pick(row, ["교우관계", "친구", "friends", "Friends"]),
     notes: pick(row, ["특이사항", "메모", "notes", "Notes"]),
+    isLeader: pick(row, ["조장", "leader", "isLeader"]),
   };
 }
 

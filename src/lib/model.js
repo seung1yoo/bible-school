@@ -51,6 +51,7 @@ export function normalizeParticipant(raw = {}, teams = []) {
     guardianPhone: String(raw.guardianPhone || raw.parentPhone || raw["보호자연락처"] || raw["보호자 연락처"] || (role === "학생" ? legacyPhone : "")).trim(),
     friends: String(raw.friends || raw.friend || raw["교우관계"] || "").trim(),
     notes: String(raw.notes || raw["특이사항"] || "").trim(),
+    isLeader: role === "학생" && normalizeBoolean(raw.isLeader || raw.leader || raw["조장"]),
     groupId,
     groupIds,
     teamIds: normalizeList(raw.teamIds || raw.teams || raw["팀"]).map((value) => teamIdFromName(value, teams)).filter((teamId) => teams.some((team) => team.id === teamId)),
@@ -87,6 +88,12 @@ export function normalizeAge(value) {
 export function normalizeList(value) {
   if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean);
   return String(value || "").split(/[,，、]/).map((item) => item.trim()).filter(Boolean);
+}
+
+export function normalizeBoolean(value) {
+  if (typeof value === "boolean") return value;
+  const text = String(value || "").trim().toLowerCase();
+  return ["true", "1", "yes", "y", "조장", "예", "네", "o", "선택"].includes(text);
 }
 
 export function migrateTeams(raw = {}) {
