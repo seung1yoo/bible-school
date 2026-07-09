@@ -394,6 +394,10 @@ textarea {
   color: var(--blue-dark);
 }
 
+.group-filter-panel {
+  margin-top: -4px;
+}
+
 .list-toolbar {
   display: flex;
   align-items: center;

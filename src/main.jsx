@@ -623,11 +623,26 @@ function EditDialog({ person, onClose, onUpdate, onDelete }) {
 }
 
 function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, onRemoveTeacher }) {
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const visibleGroups = selectedGroupIds.length ? state.groups.filter((group) => selectedGroupIds.includes(group.id)) : state.groups;
   return (
     <section className="view is-active">
       <div className="section-heading">
         <div><h2>조편성</h2><p>학생은 한 조, 선생님은 여러 조에 배정할 수 있습니다.</p></div>
         <div className="group-controls"><label>조 개수<input type="number" min="1" max="20" defaultValue={state.groups.length} onBlur={(event) => onGroupCount(event.target.value)} disabled={!canAdmin} /></label><button className="primary-btn" type="button" onClick={onAutoBalance} disabled={!canAdmin}>자동 균형 배정</button></div>
+      </div>
+      <div className="filter-panel group-filter-panel">
+        <div className="filter-panel-header">
+          <strong>조 필터</strong>
+          <span>{visibleGroups.length} / {state.groups.length}개 조 표시</span>
+          <button className="ghost-btn small-btn" type="button" onClick={() => setSelectedGroupIds([])} disabled={!selectedGroupIds.length}>전체 보기</button>
+        </div>
+        <div className="filter-row">
+          <span>조</span>
+          <div className="filter-options">
+            {state.groups.map((group) => <button className={`filter-chip ${selectedGroupIds.includes(group.id) ? "is-active" : ""}`} type="button" key={group.id} onClick={() => setSelectedGroupIds((current) => toggleArrayValue(current, group.id))}>{group.name}</button>)}
+          </div>
+        </div>
       </div>
       <div className="builder-layout">
         <section className="unassigned panel">
@@ -642,7 +657,7 @@ function GroupsView({ canAdmin, state, onGroupCount, onAutoBalance, onAssign, on
           <div className="person-list teacher-list">{state.participants.filter(isTeacher).map((person) => <PersonCard key={person.id} person={person} state={state} />)}</div>
         </details>
         <div className="group-board">
-          {state.groups.map((group) => {
+          {visibleGroups.map((group) => {
             const students = state.participants.filter((person) => isStudent(person) && person.groupId === group.id);
             const teachers = state.participants.filter((person) => isTeacher(person) && person.groupIds.includes(group.id));
             const availableTeachers = state.participants.filter((person) => isTeacher(person) && !person.groupIds.includes(group.id));
