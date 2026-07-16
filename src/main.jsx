@@ -597,7 +597,7 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
             {rows.map((person) => (
               <tr key={person.id}>
                 {canAdmin && <td className="select-col"><input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(event) => toggleSelected(person.id, event.target.checked)} aria-label={`${person.name} 선택`} /></td>}
-                <td><RolePill person={person} /></td><td><strong>{person.name}</strong></td><td>{person.gender}</td><td>{person.age || ""}</td><td>{person.guardian}</td><td>{person.selfPhone}</td><td>{person.guardianPhone}</td><td>{renderFriendTags(person.friends)}</td><td>{assignmentNames(person, state).map((name) => <span className="pill" key={name}>{name}</span>)}</td><td>{person.notes}</td>
+                <td><RolePill person={person} /></td><td><strong>{person.name}</strong></td><td>{person.gender}</td><td>{person.age || ""}</td><td>{person.guardian}</td><td>{person.selfPhone}</td><td>{person.guardianPhone}</td><td>{renderFriendTags(person.friends)}</td><td>{renderAssignmentTags(person, state)}</td><td>{person.notes}</td>
                 <td>{canAdmin && <button className="ghost-btn" type="button" onClick={() => setEditingId(person.id)}>수정</button>}</td>
               </tr>
             ))}
@@ -877,6 +877,15 @@ function parseList(value) {
 
 function renderFriendTags(value) {
   return parseList(value).map((friend) => <span className="pill" key={friend}>{friend}</span>);
+}
+
+function renderAssignmentTags(person, state) {
+  return (
+    <>
+      {assignmentNames(person, state).map((name) => <span className="pill" key={name}>{name}</span>)}
+      {isStudent(person) && person.isLeader && <span className="pill leader-pill">조장</span>}
+    </>
+  );
 }
 
 function teamName(teamId, state) {
