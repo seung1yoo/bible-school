@@ -550,6 +550,7 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
   const toggleFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: toggleArrayValue(current[key], value) }));
   };
+  const exportRows = () => downloadApplicantsExcel(rows, state);
   return (
     <section className="view is-active">
       <div className="section-heading"><div><h2>참석자 조회</h2><p>역할, 연락처, 조, 사역팀으로 검색합니다.</p></div><input className="search-input" placeholder="검색" value={search} onChange={(event) => setSearch(event.target.value)} /></div>
@@ -573,12 +574,12 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
           </div>
         ))}
       </div>
-      {canAdmin && (
-        <div className="list-toolbar">
-          <span>선택 {selectedIds.length}명</span>
-          <button className="danger-btn" type="button" onClick={() => onDeleteSelected(selectedIds)} disabled={!selectedIds.length}>선택 삭제</button>
-        </div>
-      )}
+      <div className="list-toolbar">
+        <span>{rows.length}명 표시</span>
+        <button className="ghost-btn" type="button" onClick={exportRows} disabled={!rows.length}>엑셀 내보내기</button>
+        {canAdmin && <span>선택 {selectedIds.length}명</span>}
+        {canAdmin && <button className="danger-btn" type="button" onClick={() => onDeleteSelected(selectedIds)} disabled={!selectedIds.length}>선택 삭제</button>}
+      </div>
       <div className="table-wrap">
         <table>
           <thead><tr>{canAdmin && <th className="select-col"><input type="checkbox" checked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} aria-label="현재 목록 전체 선택" /></th>}{[
@@ -886,6 +887,57 @@ function renderAssignmentTags(person, state) {
       {isStudent(person) && person.isLeader && <span className="pill leader-pill">조장</span>}
     </>
   );
+}
+
+function assignmentText(person, state) {
+  return [
+    ...assignmentNames(person, state),
+    ...(isStudent(person) && person.isLeader ? ["조장"] : []),
+  ].join(", ");
+}
+
+function downloadApplicantsExcel(rows, state) {
+  const headers = ["역할", "이름", "성별", "나이", "보호자", "본인연락처", "보호자연락처", "교우관계", "소속", "특이사항"];
+  const values = rows.map((person) => [
+    normalizeRole(person.role),
+    person.name,
+    person.gender,
+    person.age || "",
+    person.guardian,
+    person.selfPhone,
+    person.guardianPhone,
+    person.friends,
+    assignmentText(person, state),
+    person.notes,
+  ]);
+  const table = [
+    "<tr>" + headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("") + "</tr>",
+    ...values.map((row) => "<tr>" + row.map((value) => `<td style="mso-number-format:'\\@';">${escapeHtml(value)}</td>`).join("") + "</tr>"),
+  ].join("");
+  const html = `<!doctype html><html><head><meta charset="UTF-8"></head><body><table>${table}</table></body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `성경학교_참석자_조회_${dateForFilename(new Date())}.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function dateForFilename(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}${month}${day}`;
 }
 
 function teamName(teamId, state) {
