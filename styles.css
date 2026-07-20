@@ -837,6 +837,96 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.roster-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.roster-actions .primary-btn {
+  margin-top: 0;
+}
+
+.roster-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.roster-warning span {
+  color: #78350f;
+}
+
+.print-title {
+  display: none;
+}
+
+.teacher-roster-board {
+  display: grid;
+  gap: 16px;
+}
+
+.teacher-roster-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+
+.teacher-roster-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.teacher-roster-card h3 {
+  margin-bottom: 8px;
+  font-size: 21px;
+}
+
+.roster-teachers {
+  display: grid;
+  min-width: 240px;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #edf1f6;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.roster-teachers strong {
+  color: var(--blue-dark);
+}
+
+.roster-table-wrap {
+  overflow: auto;
+}
+
+.teacher-roster-table {
+  min-width: 900px;
+}
+
+.teacher-roster-table th,
+.teacher-roster-table td {
+  vertical-align: top;
+}
+
+.empty-roster-cell {
+  color: var(--muted);
+  text-align: center;
+}
+
 dialog {
   width: min(760px, calc(100vw - 28px));
   border: 0;
@@ -958,8 +1048,18 @@ dialog::backdrop {
 
   .top-actions,
   .group-controls,
+  .roster-actions,
   .day-settings {
     flex-wrap: wrap;
+  }
+
+  .teacher-roster-card header {
+    flex-direction: column;
+  }
+
+  .roster-teachers {
+    width: 100%;
+    min-width: 0;
   }
 
   .search-input {
@@ -981,5 +1081,153 @@ dialog::backdrop {
 
   .phone-row small {
     grid-column: auto;
+  }
+}
+
+@media print {
+  :root {
+    --ink: #111827;
+    --line: #cfd6df;
+    --paper: #ffffff;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    min-width: 0;
+    background: white;
+    color: var(--ink);
+    font-size: 11px;
+  }
+
+  .topbar,
+  .summary-grid,
+  .tabs,
+  .roster-screen-only {
+    display: none !important;
+  }
+
+  main {
+    width: 100%;
+    padding: 0;
+  }
+
+  .view,
+  .view.is-active {
+    display: block;
+    margin-top: 0;
+  }
+
+  .print-title {
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .print-title h2 {
+    margin-bottom: 3px;
+    font-size: 18px;
+  }
+
+  .print-title p {
+    margin-bottom: 0;
+    color: #4b5563;
+  }
+
+  .teacher-roster-board {
+    display: block;
+  }
+
+  .teacher-roster-card {
+    break-after: page;
+    page-break-after: always;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .teacher-roster-card:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .teacher-roster-card header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr);
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .teacher-roster-card h3 {
+    margin-bottom: 5px;
+    font-size: 17px;
+  }
+
+  .group-stat-pills {
+    gap: 3px;
+    margin-bottom: 0;
+  }
+
+  .pill {
+    min-height: 18px;
+    padding: 1px 5px;
+    border: 1px solid #d1d5db;
+    background: white !important;
+    color: var(--ink) !important;
+    font-size: 10px;
+  }
+
+  .roster-teachers {
+    min-width: 0;
+    padding: 6px;
+    border-color: var(--line);
+    background: white;
+    font-size: 10px;
+  }
+
+  .roster-table-wrap {
+    overflow: visible;
+  }
+
+  .teacher-roster-table {
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 10px;
+  }
+
+  .teacher-roster-table th,
+  .teacher-roster-table td {
+    padding: 5px 6px;
+    border: 1px solid var(--line);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .teacher-roster-table th {
+    position: static;
+    background: #f3f4f6;
+    color: var(--ink);
+  }
+
+  .teacher-roster-table th:nth-child(1) {
+    width: 14%;
+  }
+
+  .teacher-roster-table th:nth-child(2),
+  .teacher-roster-table th:nth-child(3),
+  .teacher-roster-table th:nth-child(5) {
+    width: 8%;
+  }
+
+  .teacher-roster-table th:nth-child(4) {
+    width: 17%;
+  }
+
+  .teacher-roster-table th:nth-child(6),
+  .teacher-roster-table th:nth-child(7) {
+    width: 22%;
   }
 }

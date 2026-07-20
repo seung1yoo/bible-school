@@ -383,6 +383,7 @@ function App() {
             ["applicants", "참석자 조회"],
             ["organization", "조직도"],
             ["groups", "조편성"],
+            ["teacher-rosters", "담임용 명단"],
             ["attendance", "출석부"],
             ["medical", "의무기록"],
             ["register", "참석자 등록"],
@@ -438,6 +439,9 @@ function App() {
             onAssignTeacher={assignTeacherToTeam}
             onRemoveTeacher={removeTeacherFromTeam}
           />
+        )}
+        {activeView === "teacher-rosters" && (
+          <TeacherRosterView state={state} />
         )}
         {activeView === "attendance" && (
           <AttendanceView
@@ -742,6 +746,123 @@ function OrgCard({ title, teachers, state, actions, removableTeamId, onRemove })
 
 function LeaderOrgCard({ title, leaders, state }) {
   return <article className="org-card"><header><h3>{title}</h3><div className="org-actions"><span className="pill leader-pill">조장 {leaders.length}명</span></div></header><div className="phone-list">{leaders.map((person) => <div className="phone-row" key={person.id}><strong>{person.name}</strong><a href={`tel:${contactPhone(person)}`}>{contactPhone(person) || "연락처 미입력"}</a><small>{assignmentNames(person, state).join(", ") || "미배정"}</small></div>)}</div></article>;
+}
+
+function TeacherRosterView({ state }) {
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const selectedGroups = selectedGroupIds.length ? state.groups.filter((group) => selectedGroupIds.includes(group.id)) : state.groups;
+  const unassignedStudents = state.participants.filter((person) => isStudent(person) && !person.groupId);
+  const printedAt = new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date());
+  const toggleGroup = (groupId) => {
+    setSelectedGroupIds((current) => toggleArrayValue(current, groupId));
+  };
+  return (
+    <section className="view is-active teacher-roster-view">
+      <div className="section-heading roster-screen-only">
+        <div>
+          <h2>담임용 명단</h2>
+          <p>조별 담임 선생님께 전달할 학생 명단을 인쇄하거나 PDF로 저장합니다.</p>
+        </div>
+        <div className="roster-actions">
+          <button className="ghost-btn" type="button" onClick={() => setSelectedGroupIds([])} disabled={!selectedGroupIds.length}>전체 조 보기</button>
+          <button className="primary-btn" type="button" onClick={() => window.print()}>인쇄 / PDF 저장</button>
+        </div>
+      </div>
+      <div className="filter-panel roster-screen-only">
+        <div className="filter-panel-header">
+          <strong>인쇄할 조</strong>
+          <span>{selectedGroups.length} / {state.groups.length}개 조 표시</span>
+        </div>
+        <div className="filter-row">
+          <span>조</span>
+          <div className="filter-options">
+            {state.groups.map((group) => (
+              <button className={`filter-chip ${selectedGroupIds.includes(group.id) ? "is-active" : ""}`} type="button" key={group.id} onClick={() => toggleGroup(group.id)}>{group.name}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+      {unassignedStudents.length > 0 && (
+        <div className="roster-warning roster-screen-only">
+          <strong>미배정 학생 {unassignedStudents.length}명</strong>
+          <span>기본 인쇄 명단에는 포함되지 않습니다. 조편성 화면에서 배정 후 출력하세요.</span>
+        </div>
+      )}
+      <div className="print-title">
+        <h2>성경학교 조별 담임용 명단</h2>
+        <p>출력일 {printedAt}</p>
+      </div>
+      <div className="teacher-roster-board">
+        {selectedGroups.map((group) => {
+          const students = sortRows(
+            state.participants.filter((person) => isStudent(person) && person.groupId === group.id),
+            { key: "name", direction: "asc" },
+            (person, key) => person[key] || "",
+          );
+          const teachers = state.participants.filter((person) => isTeacher(person) && person.groupIds.includes(group.id));
+          const stats = groupStudentStats(students);
+          return <TeacherRosterCard key={group.id} group={group} students={students} teachers={teachers} stats={stats} />;
+        })}
+      </div>
+    </section>
+  );
+}
+
+function TeacherRosterCard({ group, students, teachers, stats }) {
+  return (
+    <article className="teacher-roster-card">
+      <header>
+        <div>
+          <h3>{group.name}</h3>
+          <div className="group-stat-pills">
+            <span className="pill">학생 {students.length}명</span>
+            <span className="pill gender-male">남 {stats.male}</span>
+            <span className="pill gender-female">여 {stats.female}</span>
+            {stats.ages.map(([age, count]) => <span className="pill" key={age}>{age}살 {count}</span>)}
+          </div>
+        </div>
+        <div className="roster-teachers">
+          <strong>담당 선생님</strong>
+          {teachers.length ? teachers.map((teacher) => (
+            <span key={teacher.id}>{teacher.name}{teacher.selfPhone ? ` · ${teacher.selfPhone}` : " · 연락처 미입력"}</span>
+          )) : <span>배정된 선생님 없음</span>}
+        </div>
+      </header>
+      <div className="roster-table-wrap">
+        <table className="teacher-roster-table">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>성별</th>
+              <th>나이</th>
+              <th>보호자연락처</th>
+              <th>구분</th>
+              <th>교우관계</th>
+              <th>특이사항</th>
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((student) => (
+              <tr key={student.id}>
+                <td><strong>{student.name}</strong></td>
+                <td>{student.gender}</td>
+                <td>{student.age || ""}</td>
+                <td>{student.guardianPhone}</td>
+                <td>{student.isLeader ? "조장" : ""}</td>
+                <td>{student.friends}</td>
+                <td>{student.notes}</td>
+              </tr>
+            ))}
+            {!students.length && (
+              <tr>
+                <td colSpan="7" className="empty-roster-cell">배정된 학생이 없습니다.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  );
 }
 
 function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
