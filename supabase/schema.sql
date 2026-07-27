@@ -47,7 +47,7 @@ to authenticated
 using (user_id = auth.uid());
 
 insert into public.app_state (id, data)
-values ('main', '{"participants":[],"groups":[{"id":"group-1","name":"1조"},{"id":"group-2","name":"2조"},{"id":"group-3","name":"3조"},{"id":"group-4","name":"4조"}],"teams":[],"dayLabels":["1일차","2일차","3일차"]}'::jsonb)
+values ('main', '{"participants":[],"groups":[{"id":"group-1","name":"1조"},{"id":"group-2","name":"2조"},{"id":"group-3","name":"3조"},{"id":"group-4","name":"4조"}],"teams":[],"attendanceItems":[{"id":"checkin","label":"입소"}]}'::jsonb)
 on conflict (id) do nothing;
 
 -- Supabase Dashboard > Authentication > Users에서 세 계정을 만든 뒤,

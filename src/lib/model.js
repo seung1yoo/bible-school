@@ -16,13 +16,14 @@ export function createInitialState() {
       { id: "group-4", name: "4조" },
     ],
     teams: [],
-    dayLabels: ["1일차", "2일차", "3일차"],
+    attendanceItems: [{ id: "checkin", label: "입소" }],
   };
 }
 
 export function normalizeState(raw = {}) {
   const fallback = createInitialState();
   const teams = migrateTeams(raw);
+  const attendanceItems = normalizeAttendanceItems(raw.attendanceItems, raw.dayLabels);
   return {
     participants: Array.isArray(raw.participants)
       ? raw.participants.map((person) => normalizeParticipant(person, teams))
@@ -31,7 +32,7 @@ export function normalizeState(raw = {}) {
         : [],
     groups: Array.isArray(raw.groups) && raw.groups.length ? raw.groups : fallback.groups,
     teams,
-    dayLabels: Array.isArray(raw.dayLabels) ? raw.dayLabels : fallback.dayLabels,
+    attendanceItems,
   };
 }
 
@@ -55,7 +56,7 @@ export function normalizeParticipant(raw = {}, teams = []) {
     groupId,
     groupIds,
     teamIds: normalizeList(raw.teamIds || raw.teams || raw["팀"]).map((value) => teamIdFromName(value, teams)).filter((teamId) => teams.some((team) => team.id === teamId)),
-    attendance: raw.attendance || { day1: false, day2: false, day3: false, memo: "" },
+    attendance: normalizeAttendance(raw.attendance),
     medical: raw.medical || {
       allergies: "",
       medication: "",
@@ -64,6 +65,46 @@ export function normalizeParticipant(raw = {}, teams = []) {
       incidentLog: "",
     },
   };
+}
+
+export function normalizeAttendanceItems(items, dayLabels) {
+  const normalized = Array.isArray(items)
+    ? items.map((item, index) => ({
+      id: String(item?.id || `attendance-${index + 1}`).trim(),
+      label: String(item?.label || "").trim(),
+    })).filter((item) => item.id && item.label)
+    : [];
+
+  if (normalized.length) return dedupeAttendanceItems(normalized);
+
+  if (Array.isArray(dayLabels) && dayLabels.length) {
+    return dayLabels.map((label, index) => ({
+      id: `day${index + 1}`,
+      label: String(label || `${index + 1}일차`).trim() || `${index + 1}일차`,
+    }));
+  }
+
+  return createInitialState().attendanceItems;
+}
+
+export function normalizeAttendance(raw = {}) {
+  const attendance = raw || {};
+  return {
+    ...attendance,
+    memo: String(attendance.memo || ""),
+  };
+}
+
+function dedupeAttendanceItems(items) {
+  const seen = new Set();
+  return items.map((item, index) => {
+    let id = item.id || `attendance-${index + 1}`;
+    while (seen.has(id)) {
+      id = `${item.id}-${index + 1}`;
+    }
+    seen.add(id);
+    return { ...item, id };
+  });
 }
 
 export function normalizeRole(value) {

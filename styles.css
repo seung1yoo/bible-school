@@ -84,7 +84,6 @@ main {
 
 .top-actions,
 .group-controls,
-.day-settings,
 .dialog-actions {
   display: flex;
   align-items: center;
@@ -705,12 +704,34 @@ tbody tr:hover {
   accent-color: var(--green);
 }
 
-.day-settings {
-  max-width: 420px;
+.attendance-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
-.day-settings input {
+.attendance-item-panel {
+  padding: 14px;
+}
+
+.attendance-item-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attendance-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.attendance-item-row input {
   min-width: 0;
+}
+
+.attendance-print-only {
+  display: none;
 }
 
 .medical-grid {
@@ -1048,9 +1069,12 @@ dialog::backdrop {
 
   .top-actions,
   .group-controls,
-  .roster-actions,
-  .day-settings {
+  .roster-actions {
     flex-wrap: wrap;
+  }
+
+  .attendance-tools {
+    grid-template-columns: 1fr;
   }
 
   .teacher-roster-card header {
@@ -1106,7 +1130,8 @@ dialog::backdrop {
   .topbar,
   .summary-grid,
   .tabs,
-  .roster-screen-only {
+  .roster-screen-only,
+  .attendance-screen-only {
     display: none !important;
   }
 
@@ -1134,6 +1159,97 @@ dialog::backdrop {
   .print-title p {
     margin-bottom: 0;
     color: #4b5563;
+  }
+
+  .attendance-print-only {
+    display: block;
+  }
+
+  .attendance-print-board {
+    display: block;
+  }
+
+  .attendance-print-section {
+    break-after: page;
+    page-break-after: always;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .attendance-print-section:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .attendance-print-section header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .attendance-print-section h3 {
+    margin-bottom: 0;
+    font-size: 17px;
+  }
+
+  .attendance-print-section header span {
+    color: #4b5563;
+    font-weight: 800;
+  }
+
+  .attendance-print-table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 10px;
+  }
+
+  .attendance-print-table th,
+  .attendance-print-table td {
+    height: 26px;
+    padding: 5px 6px;
+    border: 1px solid var(--line);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+
+  .attendance-print-table th {
+    position: static;
+    background: #f3f4f6;
+    color: var(--ink);
+  }
+
+  .attendance-print-table th:nth-child(1) {
+    width: 13%;
+  }
+
+  .attendance-print-table th:nth-child(2),
+  .attendance-print-table th:nth-child(3) {
+    width: 7%;
+  }
+
+  .attendance-print-table th:nth-child(4) {
+    width: 18%;
+  }
+
+  .attendance-print-table th:last-child {
+    width: 18%;
+  }
+
+  .paper-check-cell {
+    text-align: center;
+  }
+
+  .paper-check-cell span {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid #111827;
+    vertical-align: middle;
   }
 
   .teacher-roster-board {

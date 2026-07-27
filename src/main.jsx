@@ -270,6 +270,40 @@ function App() {
     });
   }
 
+  async function addAttendanceItem() {
+    if (!canAdmin) return;
+    const nextNumber = state.attendanceItems.length + 1;
+    await persist({
+      ...state,
+      attendanceItems: [
+        ...state.attendanceItems,
+        { id: `attendance-${crypto.randomUUID()}`, label: `${nextNumber}일차` },
+      ],
+    });
+  }
+
+  async function renameAttendanceItem(itemId, label) {
+    if (!canAdmin) return;
+    const nextLabel = label.trim();
+    if (!nextLabel) return;
+    await persist({
+      ...state,
+      attendanceItems: state.attendanceItems.map((item) => (
+        item.id === itemId ? { ...item, label: nextLabel } : item
+      )),
+    });
+  }
+
+  async function deleteAttendanceItem(itemId) {
+    if (!canAdmin || state.attendanceItems.length <= 1) return;
+    const item = state.attendanceItems.find((entry) => entry.id === itemId);
+    if (!item || !confirm(`${item.label} 출석 항목을 삭제할까요?`)) return;
+    await persist({
+      ...state,
+      attendanceItems: state.attendanceItems.filter((entry) => entry.id !== itemId),
+    });
+  }
+
   async function updateMedical(personId, key, value) {
     if (!canMedical) return;
     await persist({
@@ -445,10 +479,13 @@ function App() {
         )}
         {activeView === "attendance" && (
           <AttendanceView
+            canAdmin={canAdmin}
             canAttendance={canAttendance}
             state={state}
-            setDayLabels={(dayLabels) => persist({ ...state, dayLabels })}
             onChange={updateAttendance}
+            onAddItem={addAttendanceItem}
+            onRenameItem={renameAttendanceItem}
+            onDeleteItem={deleteAttendanceItem}
           />
         )}
         {activeView === "medical" && (
@@ -865,8 +902,9 @@ function TeacherRosterCard({ group, students, teachers, stats }) {
   );
 }
 
-function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
-  const [sort, setSort] = useState({ key: "assignment", direction: "asc" });
+function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, onRenameItem, onDeleteItem }) {
+  const [sort, setSort] = useState({ key: "name", direction: "asc" });
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const students = sortRows(
     state.participants.filter(isStudent),
     sort,
@@ -874,27 +912,86 @@ function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
       const values = {
         name: person.name,
         assignment: primaryAssignment(person, state) || "미배정",
-        day1: Boolean(person.attendance?.day1),
-        day2: Boolean(person.attendance?.day2),
-        day3: Boolean(person.attendance?.day3),
+        ...Object.fromEntries(state.attendanceItems.map((item) => [item.id, Boolean(person.attendance?.[item.id])])),
         memo: person.attendance?.memo || "",
       };
       return values[key] ?? "";
     },
   );
+  const visibleGroups = selectedGroupIds.length ? state.groups.filter((group) => selectedGroupIds.includes(group.id)) : state.groups;
+  const printSections = [
+    ...visibleGroups.map((group) => ({
+      id: group.id,
+      title: group.name,
+      students: sortRows(
+        state.participants.filter((person) => isStudent(person) && person.groupId === group.id),
+        { key: "name", direction: "asc" },
+        (person, key) => person[key] || "",
+      ),
+    })),
+    ...(selectedGroupIds.length ? [] : [{
+      id: "unassigned",
+      title: "미배정",
+      students: sortRows(
+        state.participants.filter((person) => isStudent(person) && !person.groupId),
+        { key: "name", direction: "asc" },
+        (person, key) => person[key] || "",
+      ),
+    }]),
+  ].filter((section) => section.students.length || section.id !== "unassigned");
+  const printedAt = new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date());
   return (
-    <section className="view is-active">
-      <div className="section-heading">
-        <div><h2>3일 출석부</h2><p>학생만 표시됩니다.</p></div>
-        <div className="day-settings">{state.dayLabels.map((label, index) => <input key={index} value={label} onChange={(event) => { const labels = [...state.dayLabels]; labels[index] = event.target.value; setDayLabels(labels); }} />)}</div>
+    <section className="view is-active attendance-view">
+      <div className="section-heading attendance-screen-only">
+        <div><h2>출석부</h2><p>출석 항목을 행사 방식에 맞게 조정하고 학생은 이름순으로 확인합니다.</p></div>
+        <div className="roster-actions">
+          <button className="ghost-btn" type="button" onClick={() => setSelectedGroupIds([])} disabled={!selectedGroupIds.length}>전체 조 출력</button>
+          <button className="primary-btn" type="button" onClick={() => window.print()}>인쇄 / PDF 저장</button>
+        </div>
       </div>
-      <div className="table-wrap">
+      <div className="attendance-tools attendance-screen-only">
+        <div className="filter-panel attendance-print-filter">
+          <div className="filter-panel-header">
+            <strong>출력할 조</strong>
+            <span>{visibleGroups.length} / {state.groups.length}개 조 선택</span>
+          </div>
+          <div className="filter-row">
+            <span>조</span>
+            <div className="filter-options">
+              {state.groups.map((group) => (
+                <button className={`filter-chip ${selectedGroupIds.includes(group.id) ? "is-active" : ""}`} type="button" key={group.id} onClick={() => setSelectedGroupIds((current) => toggleArrayValue(current, group.id))}>{group.name}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="panel attendance-item-panel">
+          <div className="compact-panel-heading">
+            <h3>출석 항목</h3>
+            <button className="secondary-btn small-btn" type="button" onClick={onAddItem} disabled={!canAdmin}>항목 추가</button>
+          </div>
+          <div className="attendance-item-list">
+            {state.attendanceItems.map((item) => (
+              <div className="attendance-item-row" key={item.id}>
+                <input defaultValue={item.label} disabled={!canAdmin} onBlur={(event) => {
+                  if (!event.target.value.trim()) {
+                    event.target.value = item.label;
+                    return;
+                  }
+                  onRenameItem(item.id, event.target.value);
+                }} />
+                <button className="ghost-btn small-btn" type="button" onClick={() => onDeleteItem(item.id)} disabled={!canAdmin || state.attendanceItems.length <= 1}>삭제</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="table-wrap attendance-screen-only">
         <table>
           <thead>
             <tr>
               <SortableTh sortKey="name" label="이름" sort={sort} setSort={setSort} />
               <SortableTh sortKey="assignment" label="조" sort={sort} setSort={setSort} />
-              {state.dayLabels.map((label, index) => <SortableTh key={label} sortKey={`day${index + 1}`} label={label} sort={sort} setSort={setSort} />)}
+              {state.attendanceItems.map((item) => <SortableTh key={item.id} sortKey={item.id} label={item.label} sort={sort} setSort={setSort} />)}
               <SortableTh sortKey="memo" label="메모" sort={sort} setSort={setSort} />
             </tr>
           </thead>
@@ -903,14 +1000,63 @@ function AttendanceView({ canAttendance, state, setDayLabels, onChange }) {
               <tr key={person.id}>
                 <td><strong>{person.name}</strong></td>
                 <td>{primaryAssignment(person, state) || "미배정"}</td>
-                {[1, 2, 3].map((day) => <td key={day}><input className="attendance-check" type="checkbox" disabled={!canAttendance} checked={Boolean(person.attendance?.[`day${day}`])} onChange={(event) => onChange(person.id, `day${day}`, event.target.checked)} /></td>)}
+                {state.attendanceItems.map((item) => <td key={item.id}><input className="attendance-check" type="checkbox" disabled={!canAttendance} checked={Boolean(person.attendance?.[item.id])} onChange={(event) => onChange(person.id, item.id, event.target.checked)} /></td>)}
                 <td><input disabled={!canAttendance} value={person.attendance?.memo || ""} onChange={(event) => onChange(person.id, "memo", event.target.value)} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <div className="print-title attendance-print-only">
+        <h2>성경학교 출석부</h2>
+        <p>출력일 {printedAt}</p>
+      </div>
+      <div className="attendance-print-board attendance-print-only">
+        {printSections.map((section) => (
+          <AttendancePrintSection key={section.id} title={section.title} students={section.students} items={state.attendanceItems} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+function AttendancePrintSection({ title, students, items }) {
+  return (
+    <article className="attendance-print-section">
+      <header>
+        <h3>{title}</h3>
+        <span>학생 {students.length}명</span>
+      </header>
+      <table className="attendance-print-table">
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>성별</th>
+            <th>나이</th>
+            <th>보호자연락처</th>
+            {items.map((item) => <th key={item.id}>{item.label}</th>)}
+            <th>메모</th>
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((student) => (
+            <tr key={student.id}>
+              <td><strong>{student.name}</strong></td>
+              <td>{student.gender}</td>
+              <td>{student.age || ""}</td>
+              <td>{student.guardianPhone}</td>
+              {items.map((item) => <td className="paper-check-cell" key={item.id}><span /></td>)}
+              <td></td>
+            </tr>
+          ))}
+          {!students.length && (
+            <tr>
+              <td colSpan={items.length + 5} className="empty-roster-cell">배정된 학생이 없습니다.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </article>
   );
 }
 
