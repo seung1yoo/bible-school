@@ -1211,16 +1211,20 @@ dialog::backdrop {
   }
 
   .attendance-print-table th:nth-child(1) {
+    width: 6%;
+  }
+
+  .attendance-print-table th:nth-child(2) {
     width: 13%;
   }
 
-  .attendance-print-table th:nth-child(2),
   .attendance-print-table th:nth-child(3),
-  .attendance-print-table th:nth-child(4) {
+  .attendance-print-table th:nth-child(4),
+  .attendance-print-table th:nth-child(5) {
     width: 7%;
   }
 
-  .attendance-print-table th:nth-child(5) {
+  .attendance-print-table th:nth-child(6) {
     width: 18%;
   }
 

@@ -996,6 +996,7 @@ function AttendancePrintSection({ title, students, items, state }) {
       <table className="attendance-print-table">
         <thead>
           <tr>
+            <th>번호</th>
             <th>이름</th>
             <th>조</th>
             <th>성별</th>
@@ -1006,8 +1007,9 @@ function AttendancePrintSection({ title, students, items, state }) {
           </tr>
         </thead>
         <tbody>
-          {students.map((student) => (
+          {students.map((student, index) => (
             <tr key={student.id}>
+              <td>{index + 1}</td>
               <td><strong>{student.name}</strong></td>
               <td>{primaryAssignment(student, state) || "미배정"}</td>
               <td>{student.gender}</td>
@@ -1019,7 +1021,7 @@ function AttendancePrintSection({ title, students, items, state }) {
           ))}
           {!students.length && (
             <tr>
-              <td colSpan={items.length + 6} className="empty-roster-cell">등록된 학생이 없습니다.</td>
+              <td colSpan={items.length + 7} className="empty-roster-cell">등록된 학생이 없습니다.</td>
             </tr>
           )}
         </tbody>
