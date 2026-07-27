@@ -904,7 +904,6 @@ function TeacherRosterCard({ group, students, teachers, stats }) {
 
 function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, onRenameItem, onDeleteItem }) {
   const [sort, setSort] = useState({ key: "name", direction: "asc" });
-  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const students = sortRows(
     state.participants.filter(isStudent),
     sort,
@@ -918,52 +917,21 @@ function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, o
       return values[key] ?? "";
     },
   );
-  const visibleGroups = selectedGroupIds.length ? state.groups.filter((group) => selectedGroupIds.includes(group.id)) : state.groups;
-  const printSections = [
-    ...visibleGroups.map((group) => ({
-      id: group.id,
-      title: group.name,
-      students: sortRows(
-        state.participants.filter((person) => isStudent(person) && person.groupId === group.id),
-        { key: "name", direction: "asc" },
-        (person, key) => person[key] || "",
-      ),
-    })),
-    ...(selectedGroupIds.length ? [] : [{
-      id: "unassigned",
-      title: "미배정",
-      students: sortRows(
-        state.participants.filter((person) => isStudent(person) && !person.groupId),
-        { key: "name", direction: "asc" },
-        (person, key) => person[key] || "",
-      ),
-    }]),
-  ].filter((section) => section.students.length || section.id !== "unassigned");
+  const printStudents = sortRows(
+    state.participants.filter(isStudent),
+    { key: "name", direction: "asc" },
+    (person, key) => person[key] || "",
+  );
   const printedAt = new Intl.DateTimeFormat("ko-KR", { dateStyle: "long" }).format(new Date());
   return (
     <section className="view is-active attendance-view">
       <div className="section-heading attendance-screen-only">
         <div><h2>출석부</h2><p>출석 항목을 행사 방식에 맞게 조정하고 학생은 이름순으로 확인합니다.</p></div>
         <div className="roster-actions">
-          <button className="ghost-btn" type="button" onClick={() => setSelectedGroupIds([])} disabled={!selectedGroupIds.length}>전체 조 출력</button>
           <button className="primary-btn" type="button" onClick={() => window.print()}>인쇄 / PDF 저장</button>
         </div>
       </div>
       <div className="attendance-tools attendance-screen-only">
-        <div className="filter-panel attendance-print-filter">
-          <div className="filter-panel-header">
-            <strong>출력할 조</strong>
-            <span>{visibleGroups.length} / {state.groups.length}개 조 선택</span>
-          </div>
-          <div className="filter-row">
-            <span>조</span>
-            <div className="filter-options">
-              {state.groups.map((group) => (
-                <button className={`filter-chip ${selectedGroupIds.includes(group.id) ? "is-active" : ""}`} type="button" key={group.id} onClick={() => setSelectedGroupIds((current) => toggleArrayValue(current, group.id))}>{group.name}</button>
-              ))}
-            </div>
-          </div>
-        </div>
         <div className="panel attendance-item-panel">
           <div className="compact-panel-heading">
             <h3>출석 항목</h3>
@@ -1012,15 +980,13 @@ function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, o
         <p>출력일 {printedAt}</p>
       </div>
       <div className="attendance-print-board attendance-print-only">
-        {printSections.map((section) => (
-          <AttendancePrintSection key={section.id} title={section.title} students={section.students} items={state.attendanceItems} />
-        ))}
+        <AttendancePrintSection title="전체 명단" students={printStudents} items={state.attendanceItems} state={state} />
       </div>
     </section>
   );
 }
 
-function AttendancePrintSection({ title, students, items }) {
+function AttendancePrintSection({ title, students, items, state }) {
   return (
     <article className="attendance-print-section">
       <header>
@@ -1031,6 +997,7 @@ function AttendancePrintSection({ title, students, items }) {
         <thead>
           <tr>
             <th>이름</th>
+            <th>조</th>
             <th>성별</th>
             <th>나이</th>
             <th>보호자연락처</th>
@@ -1042,6 +1009,7 @@ function AttendancePrintSection({ title, students, items }) {
           {students.map((student) => (
             <tr key={student.id}>
               <td><strong>{student.name}</strong></td>
+              <td>{primaryAssignment(student, state) || "미배정"}</td>
               <td>{student.gender}</td>
               <td>{student.age || ""}</td>
               <td>{student.guardianPhone}</td>
@@ -1051,7 +1019,7 @@ function AttendancePrintSection({ title, students, items }) {
           ))}
           {!students.length && (
             <tr>
-              <td colSpan={items.length + 5} className="empty-roster-cell">배정된 학생이 없습니다.</td>
+              <td colSpan={items.length + 6} className="empty-roster-cell">등록된 학생이 없습니다.</td>
             </tr>
           )}
         </tbody>

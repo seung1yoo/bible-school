@@ -705,9 +705,7 @@ tbody tr:hover {
 }
 
 .attendance-tools {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 14px;
+  max-width: 520px;
   margin-bottom: 14px;
 }
 
@@ -1073,10 +1071,6 @@ dialog::backdrop {
     flex-wrap: wrap;
   }
 
-  .attendance-tools {
-    grid-template-columns: 1fr;
-  }
-
   .teacher-roster-card header {
     flex-direction: column;
   }
@@ -1170,16 +1164,9 @@ dialog::backdrop {
   }
 
   .attendance-print-section {
-    break-after: page;
-    page-break-after: always;
     padding: 0;
     border: 0;
     box-shadow: none;
-  }
-
-  .attendance-print-section:last-child {
-    break-after: auto;
-    page-break-after: auto;
   }
 
   .attendance-print-section header {
@@ -1228,11 +1215,12 @@ dialog::backdrop {
   }
 
   .attendance-print-table th:nth-child(2),
-  .attendance-print-table th:nth-child(3) {
+  .attendance-print-table th:nth-child(3),
+  .attendance-print-table th:nth-child(4) {
     width: 7%;
   }
 
-  .attendance-print-table th:nth-child(4) {
+  .attendance-print-table th:nth-child(5) {
     width: 18%;
   }
 
