@@ -1228,6 +1228,10 @@ dialog::backdrop {
     width: 18%;
   }
 
+  .attendance-print-table th:nth-child(7) {
+    width: 10%;
+  }
+
   .attendance-print-table th:last-child {
     width: 18%;
   }
@@ -1326,16 +1330,23 @@ dialog::backdrop {
 
   .teacher-roster-table th:nth-child(2),
   .teacher-roster-table th:nth-child(3),
-  .teacher-roster-table th:nth-child(5) {
-    width: 8%;
+  .teacher-roster-table th:nth-child(6) {
+    width: 7%;
   }
 
   .teacher-roster-table th:nth-child(4) {
-    width: 17%;
+    width: 16%;
   }
 
-  .teacher-roster-table th:nth-child(6),
+  .teacher-roster-table th:nth-child(5) {
+    width: 10%;
+  }
+
   .teacher-roster-table th:nth-child(7) {
-    width: 22%;
+    width: 18%;
+  }
+
+  .teacher-roster-table th:nth-child(8) {
+    width: 21%;
   }
 }

@@ -50,6 +50,7 @@ export function normalizeParticipant(raw = {}, teams = []) {
     guardian: String(raw.guardian || "").trim(),
     selfPhone: String(raw.selfPhone || raw.personalPhone || raw["본인연락처"] || raw["본인 연락처"] || (role === "선생님" ? legacyPhone : "")).trim(),
     guardianPhone: String(raw.guardianPhone || raw.parentPhone || raw["보호자연락처"] || raw["보호자 연락처"] || (role === "학생" ? legacyPhone : "")).trim(),
+    shirtSize: String(raw.shirtSize || raw.tshirtSize || raw["단체티사이즈"] || raw["단체티 사이즈"] || raw["티셔츠사이즈"] || raw["티셔츠 사이즈"] || "").trim(),
     friends: String(raw.friends || raw.friend || raw["교우관계"] || "").trim(),
     notes: String(raw.notes || raw["특이사항"] || "").trim(),
     isLeader: role === "학생" && normalizeBoolean(raw.isLeader || raw.leader || raw["조장"]),

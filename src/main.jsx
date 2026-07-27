@@ -28,6 +28,7 @@ const emptyParticipant = {
   guardian: "",
   selfPhone: "",
   guardianPhone: "",
+  shirtSize: "",
   friends: "",
   notes: "",
   isLeader: false,
@@ -322,22 +323,38 @@ function App() {
     } else {
       rows = excelRowsToObjects(await readXlsxFile(file));
     }
-    const parsed = rows.map((row) => normalizeParticipant(rowToParticipant(row), state.teams)).filter((person) => person.name);
-    const existingNames = new Set(state.participants.map((person) => normalizeNameKey(person.name)).filter(Boolean));
+    const parsed = rows.map((row) => ({
+      participant: normalizeParticipant(rowToParticipant(row), state.teams),
+      hasShirtSize: hasAnyKey(row, ["단체티사이즈", "단체티 사이즈", "티셔츠사이즈", "티셔츠 사이즈", "shirtSize", "tshirtSize", "TshirtSize"]),
+    })).filter(({ participant }) => participant.name);
+    const participants = state.participants.map((person) => ({ ...person }));
+    const existingNames = new Map(participants.map((person, index) => [normalizeNameKey(person.name), index]).filter(([name]) => Boolean(name)));
+    let addCount = 0;
+    let updateCount = 0;
     let duplicateCount = 0;
-    const participants = parsed.filter((person) => {
-      if (missingRequiredFields(person).length !== 0) return false;
-      const nameKey = normalizeNameKey(person.name);
-      if (existingNames.has(nameKey)) {
-        duplicateCount += 1;
-        return false;
+    let missingCount = 0;
+    parsed.forEach(({ participant, hasShirtSize }) => {
+      const nameKey = normalizeNameKey(participant.name);
+      const existingIndex = existingNames.get(nameKey);
+      if (existingIndex !== undefined) {
+        if (hasShirtSize && participant.shirtSize) {
+          participants[existingIndex] = { ...participants[existingIndex], shirtSize: participant.shirtSize };
+          updateCount += 1;
+        } else {
+          duplicateCount += 1;
+        }
+        return;
       }
-      existingNames.add(nameKey);
-      return true;
+      if (missingRequiredFields(participant).length !== 0) {
+        missingCount += 1;
+        return;
+      }
+      participants.push(participant);
+      existingNames.set(nameKey, participants.length - 1);
+      addCount += 1;
     });
-    await persist({ ...state, participants: [...state.participants, ...participants] });
-    const missingCount = parsed.length - participants.length - duplicateCount;
-    setImportStatus(`${participants.length}명을 가져왔습니다.${duplicateCount ? ` 중복 이름 ${duplicateCount}명은 건너뛰었습니다.` : ""}${missingCount ? ` 필수 항목 누락으로 ${missingCount}명은 건너뛰었습니다.` : ""}`);
+    await persist({ ...state, participants });
+    setImportStatus(`${addCount}명을 가져왔습니다.${updateCount ? ` 단체티 사이즈 ${updateCount}명을 업데이트했습니다.` : ""}${duplicateCount ? ` 중복 이름 ${duplicateCount}명은 건너뛰었습니다.` : ""}${missingCount ? ` 필수 항목 누락으로 ${missingCount}명은 건너뛰었습니다.` : ""}`);
   }
 
   function exportJson() {
@@ -357,7 +374,7 @@ function App() {
   }
 
   function downloadTemplate() {
-    const csv = "\uFEFF역할,이름,성별,나이,보호자,본인연락처,보호자연락처,교우관계,특이사항,조장\n학생,김하늘,남,10,김보호,,010-0000-0000,\"박은혜, 이사랑\",알레르기 확인,예\n선생님,이교사,여,,,010-1111-2222,,응급 연락 가능,\n";
+    const csv = "\uFEFF역할,이름,성별,나이,보호자,본인연락처,보호자연락처,단체티 사이즈,교우관계,특이사항,조장\n학생,김하늘,남,10,김보호,,010-0000-0000,M,\"박은혜, 이사랑\",알레르기 확인,예\n선생님,이교사,여,,,010-1111-2222,,L,,응급 연락 가능,\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -520,7 +537,7 @@ function RegisterView({ canAdmin, form, setField, onSubmit, onTemplate, onImport
           <label className="drop-zone">
             <input type="file" accept=".csv,.xlsx,.xls" disabled={!canAdmin} onChange={(event) => onImport(event.target.files?.[0])} />
             <span>엑셀 또는 CSV 파일 선택</span>
-            <small>권장 열: 역할, 이름, 성별, 나이, 보호자, 본인연락처, 보호자연락처, 교우관계, 특이사항, 조장</small>
+            <small>권장 열: 역할, 이름, 성별, 나이, 보호자, 본인연락처, 보호자연락처, 단체티 사이즈, 교우관계, 특이사항, 조장</small>
           </label>
           <div className="status">{importStatus}</div>
         </div>
@@ -540,6 +557,7 @@ function ParticipantFields({ participant, setField, disabled }) {
       <label>보호자<input value={participant.guardian} disabled={disabled} onChange={(event) => setField("guardian", event.target.value)} /></label>
       <label>본인연락처<input value={participant.selfPhone} disabled={disabled} onChange={(event) => setField("selfPhone", event.target.value)} /></label>
       <label className={role === "학생" ? "is-required" : ""}>보호자연락처<input value={participant.guardianPhone} disabled={disabled} onChange={(event) => setField("guardianPhone", event.target.value)} required={role === "학생"} /></label>
+      <label>단체티 사이즈<input value={participant.shirtSize || ""} disabled={disabled} onChange={(event) => setField("shirtSize", event.target.value)} /></label>
       {role === "학생" && <label className="checkbox-field"><input type="checkbox" checked={Boolean(participant.isLeader)} disabled={disabled} onChange={(event) => setField("isLeader", event.target.checked)} /> 조장</label>}
       <label className="wide">교우관계<input value={participant.friends} disabled={disabled} onChange={(event) => setField("friends", event.target.value)} /></label>
       <label className="wide">특이사항<textarea rows="3" value={participant.notes} disabled={disabled} onChange={(event) => setField("notes", event.target.value)} /></label>
@@ -571,6 +589,7 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
         guardian: person.guardian,
         selfPhone: person.selfPhone,
         guardianPhone: person.guardianPhone,
+        shirtSize: person.shirtSize,
         friends: person.friends,
         assignment: assignmentNames(person, state).join(", "),
         notes: person.notes,
@@ -631,6 +650,7 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
             ["guardian", "보호자"],
             ["selfPhone", "본인연락처"],
             ["guardianPhone", "보호자연락처"],
+            ["shirtSize", "단체티 사이즈"],
             ["friends", "교우관계"],
             ["assignment", "소속"],
             ["notes", "특이사항"],
@@ -639,7 +659,7 @@ function ApplicantsView({ canAdmin, state, search, setSearch, editingId, setEdit
             {rows.map((person) => (
               <tr key={person.id}>
                 {canAdmin && <td className="select-col"><input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(event) => toggleSelected(person.id, event.target.checked)} aria-label={`${person.name} 선택`} /></td>}
-                <td><RolePill person={person} /></td><td><strong>{person.name}</strong></td><td>{person.gender}</td><td>{person.age || ""}</td><td>{person.guardian}</td><td>{person.selfPhone}</td><td>{person.guardianPhone}</td><td>{renderFriendTags(person.friends)}</td><td>{renderAssignmentTags(person, state)}</td><td>{person.notes}</td>
+                <td><RolePill person={person} /></td><td><strong>{person.name}</strong></td><td>{person.gender}</td><td>{person.age || ""}</td><td>{person.guardian}</td><td>{person.selfPhone}</td><td>{person.guardianPhone}</td><td>{person.shirtSize}</td><td>{renderFriendTags(person.friends)}</td><td>{renderAssignmentTags(person, state)}</td><td>{person.notes}</td>
                 <td>{canAdmin && <button className="ghost-btn" type="button" onClick={() => setEditingId(person.id)}>수정</button>}</td>
               </tr>
             ))}
@@ -873,6 +893,7 @@ function TeacherRosterCard({ group, students, teachers, stats }) {
               <th>성별</th>
               <th>나이</th>
               <th>보호자연락처</th>
+              <th>단체티 사이즈</th>
               <th>구분</th>
               <th>교우관계</th>
               <th>특이사항</th>
@@ -885,6 +906,7 @@ function TeacherRosterCard({ group, students, teachers, stats }) {
                 <td>{student.gender}</td>
                 <td>{student.age || ""}</td>
                 <td>{student.guardianPhone}</td>
+                <td>{student.shirtSize}</td>
                 <td>{student.isLeader ? "조장" : ""}</td>
                 <td>{student.friends}</td>
                 <td>{student.notes}</td>
@@ -892,7 +914,7 @@ function TeacherRosterCard({ group, students, teachers, stats }) {
             ))}
             {!students.length && (
               <tr>
-                <td colSpan="7" className="empty-roster-cell">배정된 학생이 없습니다.</td>
+                <td colSpan="8" className="empty-roster-cell">배정된 학생이 없습니다.</td>
               </tr>
             )}
           </tbody>
@@ -911,6 +933,7 @@ function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, o
       const values = {
         name: person.name,
         assignment: primaryAssignment(person, state) || "미배정",
+        shirtSize: person.shirtSize,
         ...Object.fromEntries(state.attendanceItems.map((item) => [item.id, Boolean(person.attendance?.[item.id])])),
         memo: person.attendance?.memo || "",
       };
@@ -959,6 +982,7 @@ function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, o
             <tr>
               <SortableTh sortKey="name" label="이름" sort={sort} setSort={setSort} />
               <SortableTh sortKey="assignment" label="조" sort={sort} setSort={setSort} />
+              <SortableTh sortKey="shirtSize" label="단체티 사이즈" sort={sort} setSort={setSort} />
               {state.attendanceItems.map((item) => <SortableTh key={item.id} sortKey={item.id} label={item.label} sort={sort} setSort={setSort} />)}
               <SortableTh sortKey="memo" label="메모" sort={sort} setSort={setSort} />
             </tr>
@@ -968,6 +992,7 @@ function AttendanceView({ canAdmin, canAttendance, state, onChange, onAddItem, o
               <tr key={person.id}>
                 <td><strong>{person.name}</strong></td>
                 <td>{primaryAssignment(person, state) || "미배정"}</td>
+                <td>{person.shirtSize}</td>
                 {state.attendanceItems.map((item) => <td key={item.id}><input className="attendance-check" type="checkbox" disabled={!canAttendance} checked={Boolean(person.attendance?.[item.id])} onChange={(event) => onChange(person.id, item.id, event.target.checked)} /></td>)}
                 <td><input disabled={!canAttendance} value={person.attendance?.memo || ""} onChange={(event) => onChange(person.id, "memo", event.target.value)} /></td>
               </tr>
@@ -1002,6 +1027,7 @@ function AttendancePrintSection({ title, students, items, state }) {
             <th>성별</th>
             <th>나이</th>
             <th>보호자연락처</th>
+            <th>단체티 사이즈</th>
             {items.map((item) => <th key={item.id}>{item.label}</th>)}
             <th>메모</th>
           </tr>
@@ -1015,13 +1041,14 @@ function AttendancePrintSection({ title, students, items, state }) {
               <td>{student.gender}</td>
               <td>{student.age || ""}</td>
               <td>{student.guardianPhone}</td>
+              <td>{student.shirtSize}</td>
               {items.map((item) => <td className="paper-check-cell" key={item.id}><span /></td>)}
               <td></td>
             </tr>
           ))}
           {!students.length && (
             <tr>
-              <td colSpan={items.length + 7} className="empty-roster-cell">등록된 학생이 없습니다.</td>
+              <td colSpan={items.length + 8} className="empty-roster-cell">등록된 학생이 없습니다.</td>
             </tr>
           )}
         </tbody>
@@ -1098,6 +1125,7 @@ function rowToParticipant(row) {
     phone: pick(row, ["연락처", "전화번호", "phone", "Phone"]),
     selfPhone: pick(row, ["본인연락처", "본인 연락처", "selfPhone", "personalPhone"]),
     guardianPhone: pick(row, ["보호자연락처", "보호자 연락처", "guardianPhone", "parentPhone"]),
+    shirtSize: pick(row, ["단체티사이즈", "단체티 사이즈", "티셔츠사이즈", "티셔츠 사이즈", "shirtSize", "tshirtSize", "TshirtSize"]),
     friends: pick(row, ["교우관계", "친구", "friends", "Friends"]),
     notes: pick(row, ["특이사항", "메모", "notes", "Notes"]),
     isLeader: pick(row, ["조장", "leader", "isLeader"]),
@@ -1107,6 +1135,10 @@ function rowToParticipant(row) {
 function pick(row, keys) {
   const found = keys.find((key) => Object.prototype.hasOwnProperty.call(row, key));
   return found ? row[found] : "";
+}
+
+function hasAnyKey(row, keys) {
+  return keys.some((key) => Object.prototype.hasOwnProperty.call(row, key));
 }
 
 function parseList(value) {
@@ -1134,7 +1166,7 @@ function assignmentText(person, state) {
 }
 
 function downloadApplicantsExcel(rows, state) {
-  const headers = ["역할", "이름", "성별", "나이", "보호자", "본인연락처", "보호자연락처", "교우관계", "소속", "특이사항"];
+  const headers = ["역할", "이름", "성별", "나이", "보호자", "본인연락처", "보호자연락처", "단체티 사이즈", "교우관계", "소속", "특이사항"];
   const values = rows.map((person) => [
     normalizeRole(person.role),
     person.name,
@@ -1143,6 +1175,7 @@ function downloadApplicantsExcel(rows, state) {
     person.guardian,
     person.selfPhone,
     person.guardianPhone,
+    person.shirtSize,
     person.friends,
     assignmentText(person, state),
     person.notes,
@@ -1252,7 +1285,7 @@ function hasDuplicateParticipantName(participants, name, exceptId = "") {
 }
 
 function searchableText(person, state) {
-  return `${person.role} ${person.name} ${person.gender} ${person.age} ${person.guardian} ${person.selfPhone} ${person.guardianPhone} ${person.friends} ${person.notes} ${assignmentNames(person, state).join(" ")}`.toLowerCase();
+  return `${person.role} ${person.name} ${person.gender} ${person.age} ${person.guardian} ${person.selfPhone} ${person.guardianPhone} ${person.shirtSize} ${person.friends} ${person.notes} ${assignmentNames(person, state).join(" ")}`.toLowerCase();
 }
 
 createRoot(document.getElementById("root")).render(<App />);
